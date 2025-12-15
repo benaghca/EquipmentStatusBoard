@@ -1,0 +1,1443 @@
+<Window x:Class="EquipmentStatusTracker.WPF.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:EquipmentStatusTracker.WPF.ViewModels"
+        xmlns:conv="clr-namespace:EquipmentStatusTracker.WPF.Converters"
+        xmlns:controls="clr-namespace:EquipmentStatusTracker.WPF.Controls"
+        mc:Ignorable="d"
+        Title="Equipment Status Tracker" 
+        Height="900" Width="1600"
+        MinHeight="600" MinWidth="1000"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource BgPrimaryBrush}"
+        KeyDown="MainWindow_KeyDown">
+    
+    <Window.DataContext>
+        <vm:MainViewModel/>
+    </Window.DataContext>
+    
+    <Window.Resources>
+        <conv:StatusToColorConverter x:Key="StatusToColorConverter"/>
+        <conv:StatusToBackgroundConverter x:Key="StatusToBackgroundConverter"/>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <conv:FilterToBoolConverter x:Key="FilterToBoolConverter"/>
+        <conv:EquipmentTypeToIconConverter x:Key="EquipmentTypeToIconConverter"/>
+        <conv:ZoomToPercentConverter x:Key="ZoomToPercentConverter"/>
+        <conv:StringToUpperConverter x:Key="StringToUpperConverter"/>
+        <conv:StringEqualityConverter x:Key="StringEqualityConverter"/>
+        <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        <conv:GreaterThanZeroConverter x:Key="GreaterThanZeroConverter"/>
+        <conv:ConnectionStrokeConverter x:Key="ConnectionStrokeConverter"/>
+        <conv:GridSizeToBrushConverter x:Key="GridSizeToBrushConverter"/>
+        <conv:GridViewportConverter x:Key="GridViewportConverter"/>
+        <conv:GridViewportMultiConverter x:Key="GridViewportMultiConverter"/>
+        <conv:HalfValueConverter x:Key="HalfValueConverter"/>
+
+        <!-- ComboBox Style for dark theme -->
+        <Style x:Key="DarkComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Background" Value="{StaticResource BgTertiaryBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderMutedBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="4">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter Name="ContentSite" 
+                                                      Grid.Column="0"
+                                                      IsHitTestVisible="False" 
+                                                      Content="{TemplateBinding SelectionBoxItem}"
+                                                      ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                      ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                      Margin="3,3,3,3"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Left"/>
+                                    <TextBox Name="PART_EditableTextBox"
+                                             Grid.Column="0"
+                                             Style="{x:Null}"
+                                             HorizontalAlignment="Left"
+                                             VerticalAlignment="Center"
+                                             Margin="3,3,3,3"
+                                             Focusable="True"
+                                             Background="Transparent"
+                                             Foreground="{TemplateBinding Foreground}"
+                                             BorderThickness="0"
+                                             Visibility="Hidden"
+                                             IsReadOnly="{TemplateBinding IsReadOnly}"/>
+                                    <ToggleButton Name="ToggleButton" 
+                                                  Grid.Column="1" 
+                                                  Focusable="False"
+                                                  IsChecked="{Binding Path=IsDropDownOpen,Mode=TwoWay,RelativeSource={RelativeSource TemplatedParent}}"
+                                                  ClickMode="Press"
+                                                  Background="{StaticResource BgTertiaryBrush}"
+                                                  BorderBrush="{StaticResource BorderMutedBrush}"
+                                                  BorderThickness="1,0,0,0"
+                                                  Width="20">
+                                        <Path Name="Arrow" 
+                                              Fill="{StaticResource TextSecondaryBrush}" 
+                                              HorizontalAlignment="Center" 
+                                              VerticalAlignment="Center" 
+                                              Data="M 0 0 L 4 4 L 8 0 Z"/>
+                                    </ToggleButton>
+                                </Grid>
+                            </Border>
+                            <Popup Name="Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Grid Name="DropDown"
+                                      SnapsToDevicePixels="True"
+                                      MinWidth="{TemplateBinding ActualWidth}"
+                                      MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                    <Border x:Name="DropDownBorder"
+                                            Background="{StaticResource BgSecondaryBrush}"
+                                            BorderThickness="1"
+                                            BorderBrush="{StaticResource BorderDefaultBrush}"
+                                            CornerRadius="4">
+                                        <ScrollViewer Margin="4,6,4,6" 
+                                                     SnapsToDevicePixels="True">
+                                            <StackPanel IsItemsHost="True" 
+                                                        KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Grid>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEditable" Value="true">
+                                <Setter Property="IsTabStop" Value="false"/>
+                                <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="ContentSite" Property="Visibility" Value="Hidden"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Resources>
+                <Style TargetType="ComboBoxItem">
+                    <Setter Property="Background" Value="{StaticResource BgSecondaryBrush}"/>
+                    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Padding" Value="8,4"/>
+                    <Style.Triggers>
+                        <Trigger Property="IsHighlighted" Value="true">
+                            <Setter Property="Background" Value="{StaticResource BgTertiaryBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="true">
+                            <Setter Property="Background" Value="{StaticResource BgTertiaryBrush}"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Style.Resources>
+        </Style>
+    </Window.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="60"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Header -->
+        <Border Grid.Row="0" Background="{StaticResource BgSecondaryBrush}" 
+                BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="0,0,0,1">
+            <Grid Margin="20,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- Logo and Title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="⬡" FontSize="24" Foreground="{StaticResource AccentPrimaryBrush}" 
+                               VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Text="Equipment Status Tracker" FontSize="16" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+                
+                <!-- Project Name -->
+                <Border Grid.Column="1" Background="{StaticResource BgTertiaryBrush}" 
+                        BorderBrush="{StaticResource BorderMutedBrush}" BorderThickness="1"
+                        CornerRadius="6" Padding="12,6" Margin="20,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ProjectName}" FontSize="13" 
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                </Border>
+                
+                <!-- Status Summary -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
+                    <!-- Normal -->
+                    <Border Background="{StaticResource StatusNormalBgBrush}" CornerRadius="6" 
+                            Padding="16,8" Margin="0,0,12,0">
+                        <StackPanel>
+                            <TextBlock Text="{Binding NormalCount}" FontSize="20" FontWeight="Bold"
+                                       Foreground="{StaticResource StatusNormalBrush}" 
+                                       FontFamily="{StaticResource MonoFont}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="NORMAL" FontSize="10" 
+                                       Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- Abnormal -->
+                    <Border Background="{StaticResource StatusAbnormalBgBrush}" CornerRadius="6" 
+                            Padding="16,8" Margin="0,0,12,0">
+                        <StackPanel>
+                            <TextBlock Text="{Binding AbnormalCount}" FontSize="20" FontWeight="Bold"
+                                       Foreground="{StaticResource StatusAbnormalBrush}" 
+                                       FontFamily="{StaticResource MonoFont}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="ABNORMAL" FontSize="10" 
+                                       Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- Warning -->
+                    <Border Background="{StaticResource StatusWarningBgBrush}" CornerRadius="6" 
+                            Padding="16,8">
+                        <StackPanel>
+                            <TextBlock Text="{Binding WarningCount}" FontSize="20" FontWeight="Bold"
+                                       Foreground="{StaticResource StatusWarningBrush}" 
+                                       FontFamily="{StaticResource MonoFont}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="WARNING" FontSize="10" 
+                                       Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+                
+                <!-- Panel Toggle Buttons -->
+                <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
+                    <!-- Sidebar Toggle -->
+                    <Button Style="{StaticResource SecondaryButtonStyle}" 
+                            Command="{Binding ToggleSidebarCommand}" 
+                            Padding="8,6" Margin="0,0,8,0"
+                            ToolTip="Toggle Equipment List">
+                        <TextBlock>
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="☰"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSidebarVisible}" Value="False">
+                                            <Setter Property="Text" Value="☰"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Button>
+                    
+                    <!-- Detail Panel Toggle -->
+                    <Button Style="{StaticResource SecondaryButtonStyle}" 
+                            Command="{Binding ToggleDetailPanelCommand}" 
+                            Padding="8,6" Margin="0,0,8,0"
+                            ToolTip="Toggle Detail Panel"
+                            Visibility="{Binding SelectedEquipment, Converter={StaticResource NullToVisibilityConverter}}">
+                        <TextBlock Text="◀">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="▶"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsDetailPanelOpen}" Value="True">
+                                            <Setter Property="Text" Value="◀"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Button>
+                    
+                    <!-- History Button -->
+                    <Button Style="{StaticResource SecondaryButtonStyle}" 
+                            Command="{Binding ToggleHistoryCommand}" 
+                            Padding="8,6">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🕐" Margin="0,0,6,0"/>
+                            <TextBlock Text="History"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+        
+        <!-- Main Content -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto">
+                    <ColumnDefinition.Style>
+                        <Style TargetType="ColumnDefinition">
+                            <Setter Property="Width" Value="320"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSidebarVisible}" Value="False">
+                                    <Setter Property="Width" Value="0"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ColumnDefinition.Style>
+                </ColumnDefinition>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto">
+                    <ColumnDefinition.Style>
+                        <Style TargetType="ColumnDefinition">
+                            <Setter Property="Width" Value="0"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDetailPanelOpen}" Value="True">
+                                    <Setter Property="Width" Value="400"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsHistoryPanelOpen}" Value="True">
+                                    <Setter Property="Width" Value="500"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ColumnDefinition.Style>
+                </ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            
+            <!-- Sidebar -->
+            <Border Grid.Column="0" Background="{StaticResource BgSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="0,0,1,0"
+                    Visibility="{Binding IsSidebarVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    
+                    <!-- Section Header -->
+                    <TextBlock Grid.Row="0" Text="EQUIPMENT" FontSize="12" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextSecondaryBrush}" 
+                               Margin="20,20,20,12"/>
+                    
+                    <!-- Search Box -->
+                    <TextBox Grid.Row="1" Style="{StaticResource SearchTextBoxStyle}"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             Margin="12,0,12,12">
+                        <TextBox.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="6"/>
+                            </Style>
+                        </TextBox.Resources>
+                    </TextBox>
+                    
+                    <!-- Filter Tabs -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="12,0,12,12">
+                        <ToggleButton Content="All" Style="{StaticResource FilterTabStyle}"
+                                      IsChecked="{Binding CurrentFilter, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=all}"
+                                      Command="{Binding SetFilterCommand}" CommandParameter="all" Margin="0,0,8,0"/>
+                        <ToggleButton Content="Abnormal" Style="{StaticResource FilterTabStyle}"
+                                      IsChecked="{Binding CurrentFilter, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=abnormal}"
+                                      Command="{Binding SetFilterCommand}" CommandParameter="abnormal" Margin="0,0,8,0"/>
+                        <ToggleButton Content="Valves" Style="{StaticResource FilterTabStyle}"
+                                      IsChecked="{Binding CurrentFilter, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=valve}"
+                                      Command="{Binding SetFilterCommand}" CommandParameter="valve" Margin="0,0,8,0"/>
+                        <ToggleButton Content="Breakers" Style="{StaticResource FilterTabStyle}"
+                                      IsChecked="{Binding CurrentFilter, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=breaker}"
+                                      Command="{Binding SetFilterCommand}" CommandParameter="breaker"/>
+                    </StackPanel>
+                    
+                    <!-- Equipment List -->
+                    <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding FilteredEquipment}" Margin="12,0,12,12">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource BgTertiaryBrush}"
+                                            BorderBrush="{StaticResource BorderMutedBrush}"
+                                            BorderThickness="1" CornerRadius="8" 
+                                            Margin="0,0,0,8" Padding="12"
+                                            Cursor="Hand"
+                                            MouseLeftButtonDown="EquipmentItem_Click"
+                                            MouseLeftButtonUp="EquipmentItem_DoubleClick">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="{StaticResource BgHoverBrush}"/>
+                                                        <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="44"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <!-- Icon -->
+                                            <Border Grid.Column="0" Width="40" Height="40" CornerRadius="8"
+                                                    Background="{Binding Status, Converter={StaticResource StatusToBackgroundConverter}}">
+                                                <TextBlock Text="{Binding Type, Converter={StaticResource EquipmentTypeToIconConverter}}"
+                                                           FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           Foreground="{Binding Status, Converter={StaticResource StatusToColorConverter}}"/>
+                                            </Border>
+                                            
+                                            <!-- Info -->
+                                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                <TextBlock Text="{Binding Type}" FontSize="12"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            </StackPanel>
+                                            
+                                            <!-- Status Badge -->
+                                            <Border Grid.Column="2" CornerRadius="4" Padding="8,4"
+                                                    Background="{Binding Status, Converter={StaticResource StatusToBackgroundConverter}}"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding CurrentPosition, Converter={StaticResource StringToUpperConverter}}"
+                                                           FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{Binding Status, Converter={StaticResource StatusToColorConverter}}"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+            
+            <!-- Canvas Area -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Main Toolbar -->
+                <Border Grid.Row="0" Background="{StaticResource BgSecondaryBrush}"
+                        BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="0,0,0,1"
+                        Padding="20,12">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                            <Button Style="{StaticResource SecondaryButtonStyle}" 
+                                    Command="{Binding NewProjectCommand}" Margin="0,0,12,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="📄" Margin="0,0,6,0"/>
+                                    <TextBlock Text="New"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButtonStyle}" 
+                                    Command="{Binding OpenProjectCommand}" Margin="0,0,12,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="📂" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Open"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource SecondaryButtonStyle}" 
+                                    Command="{Binding SaveProjectCommand}" Margin="0,0,24,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="💾" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Save"/>
+                                </StackPanel>
+                            </Button>
+                            
+                            <!-- Edit Mode Toggle -->
+                            <ToggleButton IsChecked="{Binding IsEditMode}" Margin="0,0,12,0"
+                                          Style="{StaticResource FilterTabStyle}" Padding="12,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="✏️" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Edit Mode"/>
+                                </StackPanel>
+                            </ToggleButton>
+                            
+                            <!-- Undo/Redo -->
+                            <Button Style="{StaticResource SecondaryButtonStyle}" 
+                                    Command="{Binding UndoCommand}" 
+                                    IsEnabled="{Binding CanUndo}"
+                                    Padding="8,6" Margin="0,0,4,0" ToolTip="Undo (Ctrl+Z)">
+                                <TextBlock Text="↩" FontSize="14"/>
+                            </Button>
+                            <Button Style="{StaticResource SecondaryButtonStyle}" 
+                                    Command="{Binding RedoCommand}"
+                                    IsEnabled="{Binding CanRedo}"
+                                    Padding="8,6" ToolTip="Redo (Ctrl+Y)">
+                                <TextBlock Text="↪" FontSize="14"/>
+                            </Button>
+                        </StackPanel>
+                        
+                        <!-- Zoom Controls -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Border Background="{StaticResource BgTertiaryBrush}" 
+                                    BorderBrush="{StaticResource BorderMutedBrush}" BorderThickness="1"
+                                    CornerRadius="6" Padding="4">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource SecondaryButtonStyle}" Padding="8,6"
+                                            Command="{Binding ZoomOutCommand}" Content="−"/>
+                                    <TextBlock Text="{Binding ZoomLevel, Converter={StaticResource ZoomToPercentConverter}}"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontFamily="{StaticResource MonoFont}" FontSize="12"
+                                               VerticalAlignment="Center" Width="50" TextAlignment="Center"/>
+                                    <Button Style="{StaticResource SecondaryButtonStyle}" Padding="8,6"
+                                            Command="{Binding ZoomInCommand}" Content="+"/>
+                                    <Button Style="{StaticResource SecondaryButtonStyle}" Padding="8,6"
+                                            Command="{Binding FitToViewCommand}" Content="⊡" Margin="4,0,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                
+                <!-- Edit Mode Toolbar -->
+                <Border Grid.Row="1" Background="{StaticResource BgTertiaryBrush}"
+                        BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="0,0,0,1"
+                        Padding="20,8"
+                        Visibility="{Binding IsEditMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MinWidth="200"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                            <StackPanel Orientation="Horizontal">
+                            <!-- Selection Tool -->
+                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,8,0"
+                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Select}"
+                                          Command="{Binding SelectToolCommand}" CommandParameter="Select">
+                                <TextBlock Text="► Select"/>
+                            </ToggleButton>
+                            
+                            <Border Width="1" Background="{StaticResource BorderMutedBrush}" Margin="8,2"/>
+                            
+                            <!-- Equipment Types -->
+                            <TextBlock Text="Add:" Foreground="{StaticResource TextSecondaryBrush}" 
+                                       VerticalAlignment="Center" Margin="8,0,8,0"/>
+                            
+                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,4,0"
+                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Valve}"
+                                          Command="{Binding SelectToolCommand}" CommandParameter="Valve">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="✕" Margin="0,0,4,0"/>
+                                    <TextBlock Text="Valve"/>
+                                </StackPanel>
+                            </ToggleButton>
+                            
+                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,4,0"
+                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Breaker}"
+                                          Command="{Binding SelectToolCommand}" CommandParameter="Breaker">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="▭" Margin="0,0,4,0"/>
+                                    <TextBlock Text="Breaker"/>
+                                </StackPanel>
+                            </ToggleButton>
+                            
+                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,4,0"
+                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Pump}"
+                                          Command="{Binding SelectToolCommand}" CommandParameter="Pump">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="◯" Margin="0,0,4,0"/>
+                                    <TextBlock Text="Pump"/>
+                                </StackPanel>
+                            </ToggleButton>
+                            
+                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,4,0"
+                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Generator}"
+                                          Command="{Binding SelectToolCommand}" CommandParameter="Generator">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="⚡" Margin="0,0,4,0"/>
+                                    <TextBlock Text="Generator"/>
+                                </StackPanel>
+                            </ToggleButton>
+                            
+                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,4,0"
+                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=ATS}"
+                                          Command="{Binding SelectToolCommand}" CommandParameter="ATS">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="⇄" Margin="0,0,4,0"/>
+                                    <TextBlock Text="ATS"/>
+                                </StackPanel>
+                            </ToggleButton>
+                            
+                            <Border Width="1" Background="{StaticResource BorderMutedBrush}" Margin="8,2"/>
+                            
+                            <!-- Connection Tools -->
+                            <TextBlock Text="Connect:" Foreground="{StaticResource TextSecondaryBrush}" 
+                                       VerticalAlignment="Center" Margin="8,0,8,0"/>
+                            
+                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,4,0"
+                                          IsChecked="{Binding SelectedConnectionTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Pipe}"
+                                          Command="{Binding SelectConnectionToolCommand}" CommandParameter="Pipe">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="─" Foreground="#FF0066CC" Margin="0,0,4,0"/>
+                                    <TextBlock Text="Pipe"/>
+                                </StackPanel>
+                            </ToggleButton>
+                            
+                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,4,0"
+                                          IsChecked="{Binding SelectedConnectionTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Electrical}"
+                                          Command="{Binding SelectConnectionToolCommand}" CommandParameter="Electrical">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="╌" Foreground="#FFFFD700" Margin="0,0,4,0"/>
+                                    <TextBlock Text="Electrical"/>
+                                </StackPanel>
+                            </ToggleButton>
+                            
+                            <Border Width="1" Background="{StaticResource BorderMutedBrush}" Margin="8,2"/>
+                            
+                            <!-- Snap and Grid -->
+                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="8,0,8,0"
+                                          IsChecked="{Binding SnapToGrid}">
+                                <TextBlock Text="⊞ Snap"/>
+                            </ToggleButton>
+                            
+                            <TextBlock Text="Grid:" Foreground="{StaticResource TextSecondaryBrush}" 
+                                       VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <ComboBox ItemsSource="{Binding GridSizeOptions}" 
+                                      SelectedItem="{Binding GridSize}"
+                                      Style="{StaticResource DarkComboBoxStyle}"
+                                      Width="60"/>
+                            
+                            <Border Width="1" Background="{StaticResource BorderMutedBrush}" Margin="8,2"/>
+                            
+                            <!-- Group Button -->
+                            <Button Style="{StaticResource SecondaryButtonStyle}" Padding="10,6"
+                                    Command="{Binding CreateGroupCommand}"
+                                    ToolTip="Group selected items">
+                                <TextBlock Text="⧉ Group"/>
+                            </Button>
+                            </StackPanel>
+                        </ScrollViewer>
+                        
+                        <!-- Connection Hint / Selection Count -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="16,0,0,0">
+                            <TextBlock Text="{Binding ConnectionHint}" 
+                                       Foreground="{StaticResource StatusWarningBrush}"
+                                       VerticalAlignment="Center" Margin="0,0,16,0"
+                                       Visibility="{Binding ConnectionHint, Converter={StaticResource NullToVisibilityConverter}}"
+                                       TextTrimming="CharacterEllipsis"
+                                       MaxWidth="200"/>
+                            <TextBlock VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Visibility="{Binding SelectedCount, Converter={StaticResource GreaterThanZeroConverter}}">
+                                <Run Text="{Binding SelectedCount, Mode=OneWay}"/>
+                                <Run Text=" selected"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                
+                <!-- Canvas -->
+                <Grid Grid.Row="2" ClipToBounds="True">
+                    <!-- Grid Background - fills parent and tiles infinitely -->
+                    <Border x:Name="GridBackground"
+                            HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                        <Border.Background>
+                            <DrawingBrush ViewportUnits="Absolute" TileMode="Tile" Stretch="None">
+                                <DrawingBrush.Drawing>
+                                    <Binding Path="GridSize" Converter="{StaticResource GridSizeToBrushConverter}"/>
+                                </DrawingBrush.Drawing>
+                                <DrawingBrush.Viewport>
+                                    <MultiBinding Converter="{StaticResource GridViewportMultiConverter}">
+                                        <Binding Path="GridSize"/>
+                                        <Binding Path="PanX"/>
+                                        <Binding Path="PanY"/>
+                                        <Binding Path="ZoomLevel"/>
+                                    </MultiBinding>
+                                </DrawingBrush.Viewport>
+                            </DrawingBrush>
+                        </Border.Background>
+                    </Border>
+                    
+                    <!-- Canvas for mouse events -->
+                    <Canvas x:Name="DiagramCanvas"
+                            MouseLeftButtonDown="Canvas_MouseLeftButtonDown"
+                            MouseMove="Canvas_MouseMove"
+                            MouseLeftButtonUp="Canvas_MouseLeftButtonUp"
+                            MouseWheel="Canvas_MouseWheel"
+                            MouseDown="Canvas_MouseDown"
+                            MouseUp="Canvas_MouseUp"
+                            Background="Transparent"/>
+                    
+                    <!-- Groups Overlay (behind equipment) -->
+                    <ItemsControl x:Name="GroupsOverlay" ItemsSource="{Binding Groups}" IsHitTestVisible="True">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                                <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Width="{Binding Width}" Height="{Binding Height}" 
+                                      MouseLeftButtonDown="Group_MouseLeftButtonDown"
+                                      MouseMove="Group_MouseMove"
+                                      MouseLeftButtonUp="Group_MouseLeftButtonUp">
+                                    <Border CornerRadius="8" BorderThickness="2"
+                                            BorderBrush="{Binding BorderColor}"
+                                            Background="{Binding BackgroundColor}"/>
+                                    <TextBlock Text="{Binding Name}" 
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="11" FontWeight="SemiBold"
+                                               Margin="8,4,0,0" VerticalAlignment="Top"/>
+                                    <Border Background="#80000000" CornerRadius="3" Padding="4,2"
+                                            HorizontalAlignment="Left" VerticalAlignment="Top"
+                                            Margin="8,20,0,0">
+                                        <TextBlock Text="{Binding TypeLabel}" FontSize="9"
+                                                   Foreground="{StaticResource TextMutedBrush}"/>
+                                    </Border>
+                                    
+                                    <!-- Resize Handles (only in edit mode) -->
+                                    <Border x:Name="ResizeHandleNW" 
+                                            Width="12" Height="12" 
+                                            Background="#FF3B82F6" 
+                                            BorderBrush="#FFFFFFFF" 
+                                            BorderThickness="1"
+                                            CornerRadius="2"
+                                            HorizontalAlignment="Left" 
+                                            VerticalAlignment="Top"
+                                            Cursor="SizeNWSE"
+                                            MouseLeftButtonDown="Group_ResizeHandle_MouseLeftButtonDown"
+                                            Visibility="{Binding DataContext.IsEditMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                            Tag="NW"/>
+                                    <Border x:Name="ResizeHandleNE" 
+                                            Width="12" Height="12" 
+                                            Background="#FF3B82F6" 
+                                            BorderBrush="#FFFFFFFF" 
+                                            BorderThickness="1"
+                                            CornerRadius="2"
+                                            HorizontalAlignment="Right" 
+                                            VerticalAlignment="Top"
+                                            Cursor="SizeNESW"
+                                            MouseLeftButtonDown="Group_ResizeHandle_MouseLeftButtonDown"
+                                            Visibility="{Binding DataContext.IsEditMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                            Tag="NE"/>
+                                    <Border x:Name="ResizeHandleSW" 
+                                            Width="12" Height="12" 
+                                            Background="#FF3B82F6" 
+                                            BorderBrush="#FFFFFFFF" 
+                                            BorderThickness="1"
+                                            CornerRadius="2"
+                                            HorizontalAlignment="Left" 
+                                            VerticalAlignment="Bottom"
+                                            Cursor="SizeNESW"
+                                            MouseLeftButtonDown="Group_ResizeHandle_MouseLeftButtonDown"
+                                            Visibility="{Binding DataContext.IsEditMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                            Tag="SW"/>
+                                    <Border x:Name="ResizeHandleSE" 
+                                            Width="12" Height="12" 
+                                            Background="#FF3B82F6" 
+                                            BorderBrush="#FFFFFFFF" 
+                                            BorderThickness="1"
+                                            CornerRadius="2"
+                                            HorizontalAlignment="Right" 
+                                            VerticalAlignment="Bottom"
+                                            Cursor="SizeNWSE"
+                                            MouseLeftButtonDown="Group_ResizeHandle_MouseLeftButtonDown"
+                                            Visibility="{Binding DataContext.IsEditMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                            Tag="SE"/>
+                                    <Border x:Name="ResizeHandleN" 
+                                            Width="12" Height="6" 
+                                            Background="#FF3B82F6" 
+                                            BorderBrush="#FFFFFFFF" 
+                                            BorderThickness="1"
+                                            HorizontalAlignment="Center" 
+                                            VerticalAlignment="Top"
+                                            Cursor="SizeNS"
+                                            MouseLeftButtonDown="Group_ResizeHandle_MouseLeftButtonDown"
+                                            Visibility="{Binding DataContext.IsEditMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                            Tag="N"/>
+                                    <Border x:Name="ResizeHandleS" 
+                                            Width="12" Height="6" 
+                                            Background="#FF3B82F6" 
+                                            BorderBrush="#FFFFFFFF" 
+                                            BorderThickness="1"
+                                            HorizontalAlignment="Center" 
+                                            VerticalAlignment="Bottom"
+                                            Cursor="SizeNS"
+                                            MouseLeftButtonDown="Group_ResizeHandle_MouseLeftButtonDown"
+                                            Visibility="{Binding DataContext.IsEditMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                            Tag="S"/>
+                                    <Border x:Name="ResizeHandleW" 
+                                            Width="6" Height="12" 
+                                            Background="#FF3B82F6" 
+                                            BorderBrush="#FFFFFFFF" 
+                                            BorderThickness="1"
+                                            HorizontalAlignment="Left" 
+                                            VerticalAlignment="Center"
+                                            Cursor="SizeWE"
+                                            MouseLeftButtonDown="Group_ResizeHandle_MouseLeftButtonDown"
+                                            Visibility="{Binding DataContext.IsEditMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                            Tag="W"/>
+                                    <Border x:Name="ResizeHandleE" 
+                                            Width="6" Height="12" 
+                                            Background="#FF3B82F6" 
+                                            BorderBrush="#FFFFFFFF" 
+                                            BorderThickness="1"
+                                            HorizontalAlignment="Right" 
+                                            VerticalAlignment="Center"
+                                            Cursor="SizeWE"
+                                            MouseLeftButtonDown="Group_ResizeHandle_MouseLeftButtonDown"
+                                            Visibility="{Binding DataContext.IsEditMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                            Tag="E"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                        <ItemsControl.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}"/>
+                                <TranslateTransform X="{Binding PanX}" Y="{Binding PanY}"/>
+                            </TransformGroup>
+                        </ItemsControl.RenderTransform>
+                    </ItemsControl>
+                    
+                    <!-- Connections Overlay -->
+                    <ItemsControl x:Name="ConnectionsOverlay" ItemsSource="{Binding Connections}" IsHitTestVisible="True">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <!-- Transparent hit area for clicking -->
+                                    <Line X1="{Binding X1}" Y1="{Binding Y1}" 
+                                          X2="{Binding X2}" Y2="{Binding Y2}"
+                                          Stroke="Transparent" StrokeThickness="15"
+                                          Cursor="Hand"
+                                          MouseLeftButtonDown="Connection_MouseLeftButtonDown"/>
+                                    <!-- Visible line -->
+                                    <Line X1="{Binding X1}" Y1="{Binding Y1}" 
+                                          X2="{Binding X2}" Y2="{Binding Y2}"
+                                          Stroke="{Binding StrokeColor, Converter={StaticResource ConnectionStrokeConverter}}"
+                                          StrokeThickness="{Binding StrokeThickness}"
+                                          StrokeDashArray="{Binding StrokeDashArray}"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          IsHitTestVisible="False">
+                                        <Line.Style>
+                                            <Style TargetType="Line">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                        <Setter Property="StrokeThickness" Value="6"/>
+                                                        <Setter Property="Stroke" Value="#FFFFD700"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Line.Style>
+                                    </Line>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                        <ItemsControl.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}"/>
+                                <TranslateTransform X="{Binding PanX}" Y="{Binding PanY}"/>
+                            </TransformGroup>
+                        </ItemsControl.RenderTransform>
+                    </ItemsControl>
+                    
+                    <!-- Pipes Overlay (legacy) -->
+                    <ItemsControl ItemsSource="{Binding Pipes}" IsHitTestVisible="False">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Line X1="{Binding X1}" Y1="{Binding Y1}" 
+                                      X2="{Binding X2}" Y2="{Binding Y2}"
+                                      Stroke="#FF0066CC" StrokeThickness="5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                        <ItemsControl.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}"/>
+                                <TranslateTransform X="{Binding PanX}" Y="{Binding PanY}"/>
+                            </TransformGroup>
+                        </ItemsControl.RenderTransform>
+                    </ItemsControl>
+                    
+                    <!-- Equipment Overlay -->
+                    <ItemsControl x:Name="EquipmentOverlay" ItemsSource="{Binding EquipmentCollection}"
+                                  IsHitTestVisible="True">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                                <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Cursor="Hand" Background="Transparent"
+                                      MouseLeftButtonDown="Equipment_MouseLeftButtonDown"
+                                      MouseMove="Equipment_MouseMove"
+                                      MouseLeftButtonUp="Equipment_MouseLeftButtonUp">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="{Binding Height}"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <!-- Equipment Shape -->
+                                    <Grid Grid.Row="0" Width="{Binding Width}" Background="Transparent">
+                                        <!-- Selection Glow -->
+                                        <Border CornerRadius="10" Margin="-4"
+                                                Visibility="{Binding IsSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <Border.Background>
+                                                <SolidColorBrush Color="#3B82F6" Opacity="0.3"/>
+                                            </Border.Background>
+                                        </Border>
+                                        
+                                        <Border CornerRadius="8"
+                                                Background="{Binding Status, Converter={StaticResource StatusToBackgroundConverter}}"
+                                                BorderBrush="{Binding Status, Converter={StaticResource StatusToColorConverter}}"
+                                                BorderThickness="3">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                            <Setter Property="BorderBrush" Value="#FF3B82F6"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <Border.Effect>
+                                                <DropShadowEffect Color="Black" BlurRadius="12" Opacity="0.4" ShadowDepth="3"/>
+                                            </Border.Effect>
+                                            
+                                            <!-- Icon -->
+                                            <TextBlock Text="{Binding Type, Converter={StaticResource EquipmentTypeToIconConverter}}"
+                                                       FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                       Foreground="{Binding Status, Converter={StaticResource StatusToColorConverter}}"/>
+                                        </Border>
+                                        
+                                        <!-- Status Indicator -->
+                                        <Ellipse Width="18" Height="18" 
+                                                 HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                 Margin="0,-6,-6,0"
+                                                 Fill="{Binding Status, Converter={StaticResource StatusToColorConverter}}"
+                                                 Stroke="#FF0A0E14" StrokeThickness="3">
+                                            <Ellipse.Effect>
+                                                <DropShadowEffect Color="Black" BlurRadius="6" Opacity="0.5" ShadowDepth="1"/>
+                                            </Ellipse.Effect>
+                                        </Ellipse>
+                                        
+                                        <!-- No Power Flash Indicator -->
+                                        <Border CornerRadius="8" Background="#FFFFD700"
+                                                Visibility="{Binding ShouldFlashNoPower, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ShouldFlashNoPower}" Value="True">
+                                                            <DataTrigger.EnterActions>
+                                                                <BeginStoryboard x:Name="FlashStoryboard">
+                                                                    <Storyboard RepeatBehavior="Forever">
+                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                         From="0.6" To="0" Duration="0:0:0.5"
+                                                                                         AutoReverse="True"/>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </DataTrigger.EnterActions>
+                                                            <DataTrigger.ExitActions>
+                                                                <StopStoryboard BeginStoryboardName="FlashStoryboard"/>
+                                                            </DataTrigger.ExitActions>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                        </Border>
+                                        
+                                        <!-- Anchor Points (visible when connection tool selected) -->
+                                        <Canvas Visibility="{Binding DataContext.SelectedConnectionTool, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource NullToVisibilityConverter}}">
+                                            <!-- Top -->
+                                            <Ellipse Width="10" Height="10" Fill="#FF3B82F6" Stroke="White" StrokeThickness="1"
+                                                     Canvas.Left="{Binding Width, Converter={StaticResource HalfValueConverter}}"
+                                                     Canvas.Top="-5" Margin="-5,0,0,0"
+                                                     Tag="Top" MouseLeftButtonDown="Anchor_MouseLeftButtonDown" Cursor="Hand"/>
+                                            <!-- Bottom -->
+                                            <Ellipse Width="10" Height="10" Fill="#FF3B82F6" Stroke="White" StrokeThickness="1"
+                                                     Canvas.Left="{Binding Width, Converter={StaticResource HalfValueConverter}}"
+                                                     Canvas.Top="{Binding Height}" Margin="-5,-5,0,0"
+                                                     Tag="Bottom" MouseLeftButtonDown="Anchor_MouseLeftButtonDown" Cursor="Hand"/>
+                                            <!-- Left -->
+                                            <Ellipse Width="10" Height="10" Fill="#FF3B82F6" Stroke="White" StrokeThickness="1"
+                                                     Canvas.Left="-5"
+                                                     Canvas.Top="{Binding Height, Converter={StaticResource HalfValueConverter}}" Margin="0,-5,0,0"
+                                                     Tag="Left" MouseLeftButtonDown="Anchor_MouseLeftButtonDown" Cursor="Hand"/>
+                                            <!-- Right -->
+                                            <Ellipse Width="10" Height="10" Fill="#FF3B82F6" Stroke="White" StrokeThickness="1"
+                                                     Canvas.Left="{Binding Width}" Canvas.Top="{Binding Height, Converter={StaticResource HalfValueConverter}}"
+                                                     Margin="-5,-5,0,0"
+                                                     Tag="Right" MouseLeftButtonDown="Anchor_MouseLeftButtonDown" Cursor="Hand"/>
+                                        </Canvas>
+
+                                        <!-- Resize Handles (edit mode + selected) -->
+                                        <Canvas>
+                                            <Canvas.Style>
+                                                <Style TargetType="Canvas">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.IsEditMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                                                                <Condition Binding="{Binding IsSelected}" Value="True"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Canvas.Style>
+
+                                            <!-- Corner handles (10x10) -->
+                                            <Border Width="10" Height="10" Background="#FF3B82F6" BorderBrush="White" BorderThickness="1" CornerRadius="2"
+                                                    Canvas.Left="-5" Canvas.Top="-5" Cursor="SizeNWSE"
+                                                    MouseLeftButtonDown="Equipment_ResizeHandle_MouseLeftButtonDown" Tag="NW"/>
+                                            <Border Width="10" Height="10" Background="#FF3B82F6" BorderBrush="White" BorderThickness="1" CornerRadius="2"
+                                                    Canvas.Left="{Binding Width}" Canvas.Top="-5" Margin="-5,0,0,0" Cursor="SizeNESW"
+                                                    MouseLeftButtonDown="Equipment_ResizeHandle_MouseLeftButtonDown" Tag="NE"/>
+                                            <Border Width="10" Height="10" Background="#FF3B82F6" BorderBrush="White" BorderThickness="1" CornerRadius="2"
+                                                    Canvas.Left="-5" Canvas.Top="{Binding Height}" Margin="0,-5,0,0" Cursor="SizeNESW"
+                                                    MouseLeftButtonDown="Equipment_ResizeHandle_MouseLeftButtonDown" Tag="SW"/>
+                                            <Border Width="10" Height="10" Background="#FF3B82F6" BorderBrush="White" BorderThickness="1" CornerRadius="2"
+                                                    Canvas.Left="{Binding Width}" Canvas.Top="{Binding Height}" Margin="-5,-5,0,0" Cursor="SizeNWSE"
+                                                    MouseLeftButtonDown="Equipment_ResizeHandle_MouseLeftButtonDown" Tag="SE"/>
+
+                                            <!-- Edge handles -->
+                                            <Border Width="10" Height="6" Background="#FF3B82F6" BorderBrush="White" BorderThickness="1"
+                                                    Canvas.Left="{Binding Width, Converter={StaticResource HalfValueConverter}}" Canvas.Top="-3" Margin="-5,0,0,0" Cursor="SizeNS"
+                                                    MouseLeftButtonDown="Equipment_ResizeHandle_MouseLeftButtonDown" Tag="N"/>
+                                            <Border Width="10" Height="6" Background="#FF3B82F6" BorderBrush="White" BorderThickness="1"
+                                                    Canvas.Left="{Binding Width, Converter={StaticResource HalfValueConverter}}" Canvas.Top="{Binding Height}" Margin="-5,-3,0,0" Cursor="SizeNS"
+                                                    MouseLeftButtonDown="Equipment_ResizeHandle_MouseLeftButtonDown" Tag="S"/>
+                                            <Border Width="6" Height="10" Background="#FF3B82F6" BorderBrush="White" BorderThickness="1"
+                                                    Canvas.Left="-3" Canvas.Top="{Binding Height, Converter={StaticResource HalfValueConverter}}" Margin="0,-5,0,0" Cursor="SizeWE"
+                                                    MouseLeftButtonDown="Equipment_ResizeHandle_MouseLeftButtonDown" Tag="W"/>
+                                            <Border Width="6" Height="10" Background="#FF3B82F6" BorderBrush="White" BorderThickness="1"
+                                                    Canvas.Left="{Binding Width}" Canvas.Top="{Binding Height, Converter={StaticResource HalfValueConverter}}" Margin="-3,-5,0,0" Cursor="SizeWE"
+                                                    MouseLeftButtonDown="Equipment_ResizeHandle_MouseLeftButtonDown" Tag="E"/>
+                                        </Canvas>
+                                    </Grid>
+
+                                    <!-- Label -->
+                                    <Border Grid.Row="1" Background="#DD0A0E14" CornerRadius="4" Padding="6,2"
+                                            HorizontalAlignment="Center" Margin="0,4,0,0">
+                                        <TextBlock Text="{Binding Name}" 
+                                                   FontSize="11" FontFamily="Consolas"
+                                                   Foreground="#FF8B949E"/>
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                        <ItemsControl.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}"/>
+                                <TranslateTransform X="{Binding PanX}" Y="{Binding PanY}"/>
+                            </TransformGroup>
+                        </ItemsControl.RenderTransform>
+                    </ItemsControl>
+                    
+                    <!-- Selection Rectangle Canvas -->
+                    <Canvas x:Name="SelectionCanvas" IsHitTestVisible="False">
+                        <Rectangle x:Name="SelectionRectangle" 
+                                   Stroke="#FF3B82F6" StrokeThickness="1" 
+                                   StrokeDashArray="4,2"
+                                   Fill="#203B82F6" Visibility="Collapsed"/>
+                    </Canvas>
+                    
+                    <!-- Welcome Screen -->
+                    <Grid Visibility="{Binding IsWelcomeVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                          Background="#F00A0E14">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Border Width="80" Height="80" Background="{StaticResource BgTertiaryBrush}"
+                                    BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="1"
+                                    CornerRadius="12" Margin="0,0,0,24">
+                                <TextBlock Text="⬡" FontSize="40" Foreground="{StaticResource AccentPrimaryBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="Welcome to Equipment Status Tracker" FontSize="28" FontWeight="Bold"
+                                       Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Create a new project, open an existing one, or try the demo"
+                                       FontSize="16" Foreground="{StaticResource TextSecondaryBrush}"
+                                       HorizontalAlignment="Center" Margin="0,12,0,32"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Button Style="{StaticResource PrimaryButtonStyle}" 
+                                        Command="{Binding NewProjectCommand}" Padding="24,14" Margin="0,0,16,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📄" Margin="0,0,8,0" FontSize="16"/>
+                                        <TextBlock Text="New Project" FontSize="15"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource SecondaryButtonStyle}" 
+                                        Command="{Binding OpenProjectCommand}" Padding="24,14" Margin="0,0,16,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📂" Margin="0,0,8,0" FontSize="16"/>
+                                        <TextBlock Text="Open Project" FontSize="15"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource SecondaryButtonStyle}" 
+                                        Command="{Binding LoadDemoCommand}" Padding="24,14">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="▶" Margin="0,0,8,0" FontSize="16"/>
+                                        <TextBlock Text="Load Demo" FontSize="15"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Grid>
+            
+            <!-- Detail Panel -->
+            <Border Grid.Column="2"
+                    Background="{StaticResource BgSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="1,0,0,0"
+                    Visibility="{Binding IsDetailPanelOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    
+                    <!-- Header -->
+                    <Border Grid.Row="0" BorderBrush="{StaticResource BorderDefaultBrush}" 
+                            BorderThickness="0,0,0,1" Padding="20">
+                        <Grid>
+                            <TextBlock Text="{Binding SelectedGroup.Name}" 
+                                       FontSize="18" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Visibility="{Binding SelectedGroup, Converter={StaticResource NullToVisibilityConverter}}"/>
+                            <TextBlock Text="{Binding SelectedEquipment.Name}" 
+                                       FontSize="18" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Visibility="{Binding SelectedEquipment, Converter={StaticResource NullToVisibilityConverter}}"/>
+                            <Button Content="✕" Style="{StaticResource SecondaryButtonStyle}" 
+                                    HorizontalAlignment="Right" Padding="8,4"
+                                    Command="{Binding CloseDetailPanelCommand}"/>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Content -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <!-- Group Details -->
+                            <StackPanel Margin="20" Visibility="{Binding SelectedGroup, Converter={StaticResource NullToVisibilityConverter}}">
+                                <TextBlock Text="GROUP INFORMATION" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,12"/>
+                                
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Name" Foreground="{StaticResource TextSecondaryBrush}" 
+                                               VerticalAlignment="Center" Grid.Column="0"/>
+                                    <TextBox Text="{Binding SelectedGroup.Name, UpdateSourceTrigger=PropertyChanged}"
+                                             Grid.Column="1"
+                                             Width="200"
+                                             Background="{StaticResource BgTertiaryBrush}"
+                                             Foreground="{StaticResource TextPrimaryBrush}"
+                                             BorderBrush="{StaticResource BorderMutedBrush}"
+                                             BorderThickness="1"
+                                             Padding="8,4"
+                                             VerticalContentAlignment="Center"/>
+                                </Grid>
+                                <Border Height="1" Background="{StaticResource BorderMutedBrush}" Margin="0,0,0,8"/>
+                                
+                                <Grid Margin="0,0,0,8">
+                                    <TextBlock Text="Type" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                    <TextBlock Text="{Binding SelectedGroup.Type}" 
+                                               HorizontalAlignment="Right" FontFamily="{StaticResource MonoFont}"
+                                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </Grid>
+                                <Border Height="1" Background="{StaticResource BorderMutedBrush}" Margin="0,0,0,8"/>
+                                
+                                <Grid Margin="0,0,0,8">
+                                    <TextBlock Text="Items" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                    <TextBlock Text="{Binding SelectedGroup.EquipmentIds.Count}" 
+                                               HorizontalAlignment="Right" FontFamily="{StaticResource MonoFont}"
+                                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </Grid>
+                            </StackPanel>
+                            
+                            <!-- Equipment Details -->
+                            <StackPanel Margin="20" Visibility="{Binding SelectedEquipment, Converter={StaticResource NullToVisibilityConverter}}">
+                            <!-- Information Section -->
+                            <TextBlock Text="INFORMATION" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,12"/>
+                            
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Type" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <TextBlock Text="{Binding SelectedEquipment.Type}" 
+                                           HorizontalAlignment="Right" FontFamily="{StaticResource MonoFont}"
+                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource BorderMutedBrush}" Margin="0,0,0,8"/>
+                            
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Normal Position" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <TextBlock Text="{Binding SelectedEquipment.NormalPosition}" 
+                                           HorizontalAlignment="Right" FontFamily="{StaticResource MonoFont}"
+                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource BorderMutedBrush}" Margin="0,0,0,8"/>
+                            
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Current Position" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <Border Background="{Binding SelectedEquipment.Status, Converter={StaticResource StatusToBackgroundConverter}}"
+                                        CornerRadius="4" Padding="8,2" HorizontalAlignment="Right">
+                                    <TextBlock Text="{Binding SelectedEquipment.CurrentPosition, Converter={StaticResource StringToUpperConverter}}" 
+                                               FontFamily="{StaticResource MonoFont}" FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{Binding SelectedEquipment.Status, Converter={StaticResource StatusToColorConverter}}"/>
+                                </Border>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource BorderMutedBrush}" Margin="0,0,0,8"/>
+                            
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Status" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <Border Background="{Binding SelectedEquipment.Status, Converter={StaticResource StatusToBackgroundConverter}}"
+                                        CornerRadius="4" Padding="8,2" HorizontalAlignment="Right">
+                                    <TextBlock Text="{Binding SelectedEquipment.Status}" 
+                                               FontFamily="{StaticResource MonoFont}" FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{Binding SelectedEquipment.Status, Converter={StaticResource StatusToColorConverter}}"/>
+                                </Border>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource BorderMutedBrush}" Margin="0,0,0,8"/>
+                            
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Energized" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource MonoFont}"
+                                           Foreground="{StaticResource TextPrimaryBrush}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="No"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedEquipment.IsEnergized}" Value="True">
+                                                    <Setter Property="Text" Value="Yes"/>
+                                                    <Setter Property="Foreground" Value="{StaticResource StatusNormalBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource BorderMutedBrush}" Margin="0,0,0,24"/>
+                            
+                            <!-- Set Current Position Section -->
+                            <TextBlock Text="SET CURRENT POSITION" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,12"/>
+                            
+                            <ItemsControl ItemsSource="{Binding SelectedEquipment.PositionOptions}" Margin="0,0,0,24">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Command="{Binding DataContext.SetPositionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}"
+                                                Margin="0,0,6,6">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                                    <Setter Property="Padding" Value="12,10"/>
+                                                    <Setter Property="MinWidth" Value="70"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Value="True">
+                                                            <DataTrigger.Binding>
+                                                                <MultiBinding Converter="{StaticResource StringEqualityConverter}">
+                                                                    <Binding Path="."/>
+                                                                    <Binding Path="DataContext.SelectedEquipment.CurrentPosition" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                                </MultiBinding>
+                                                            </DataTrigger.Binding>
+                                                            <Setter Property="Background" Value="{StaticResource AccentPrimaryBrush}"/>
+                                                            <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Converter={StaticResource StringToUpperConverter}}"/>
+                                                <TextBlock Text=" ●" Foreground="{StaticResource AccentPrimaryBrush}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Value="True">
+                                                                    <DataTrigger.Binding>
+                                                                        <MultiBinding Converter="{StaticResource StringEqualityConverter}">
+                                                                            <Binding Path="."/>
+                                                                            <Binding Path="DataContext.SelectedEquipment.CurrentPosition" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                                        </MultiBinding>
+                                                                    </DataTrigger.Binding>
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            
+                            <!-- Set Normal Position Section -->
+                            <TextBlock Text="SET NORMAL POSITION" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                            <TextBlock Text="Define what 'normal' means for this equipment" FontSize="11"
+                                       Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12"/>
+                            
+                            <ItemsControl ItemsSource="{Binding SelectedEquipment.PositionOptions}" Margin="0,0,0,24">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Command="{Binding DataContext.SetNormalPositionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}"
+                                                Margin="0,0,6,6">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                                    <Setter Property="Padding" Value="12,10"/>
+                                                    <Setter Property="MinWidth" Value="70"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Value="True">
+                                                            <DataTrigger.Binding>
+                                                                <MultiBinding Converter="{StaticResource StringEqualityConverter}">
+                                                                    <Binding Path="."/>
+                                                                    <Binding Path="DataContext.SelectedEquipment.NormalPosition" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                                </MultiBinding>
+                                                            </DataTrigger.Binding>
+                                                            <Setter Property="Background" Value="{StaticResource StatusNormalBgBrush}"/>
+                                                            <Setter Property="BorderBrush" Value="{StaticResource StatusNormalBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Converter={StaticResource StringToUpperConverter}}"/>
+                                                <TextBlock Text=" ✓" Foreground="{StaticResource StatusNormalBrush}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Value="True">
+                                                                    <DataTrigger.Binding>
+                                                                        <MultiBinding Converter="{StaticResource StringEqualityConverter}">
+                                                                            <Binding Path="."/>
+                                                                            <Binding Path="DataContext.SelectedEquipment.NormalPosition" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                                        </MultiBinding>
+                                                                    </DataTrigger.Binding>
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            
+                            <!-- Notes Section -->
+                            <TextBlock Text="NOTES" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,12"/>
+                            <TextBox Style="{StaticResource SearchTextBoxStyle}" 
+                                     Text="{Binding SelectedEquipment.Notes, UpdateSourceTrigger=PropertyChanged}"
+                                     MinHeight="100" TextWrapping="Wrap" AcceptsReturn="True"
+                                     VerticalContentAlignment="Top"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+            
+            <!-- History Panel -->
+            <Border Grid.Column="2"
+                    Background="{StaticResource BgSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="1,0,0,0"
+                    Visibility="{Binding IsHistoryPanelOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    
+                    <Border Grid.Row="0" BorderBrush="{StaticResource BorderDefaultBrush}" 
+                            BorderThickness="0,0,0,1" Padding="20">
+                        <Grid>
+                            <TextBlock Text="Change History" FontSize="18" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="Export" Style="{StaticResource SecondaryButtonStyle}" 
+                                        Padding="12,6" Margin="0,0,8,0"
+                                        Command="{Binding ExportHistoryCommand}"/>
+                                <Button Content="✕" Style="{StaticResource SecondaryButtonStyle}" 
+                                        Padding="8,4"
+                                        Command="{Binding CloseHistoryPanelCommand}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding History}" Margin="12">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource BgTertiaryBrush}"
+                                            BorderBrush="{StaticResource BorderMutedBrush}" BorderThickness="1"
+                                            CornerRadius="8" Padding="16" Margin="0,0,0,8">
+                                        <StackPanel>
+                                            <Grid Margin="0,0,0,8">
+                                                <TextBlock Text="{Binding EquipmentName}" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                <TextBlock Text="{Binding Timestamp, StringFormat={}{0:g}}"
+                                                           HorizontalAlignment="Right" FontSize="12"
+                                                           Foreground="{StaticResource TextMutedBrush}"
+                                                           FontFamily="{StaticResource MonoFont}"/>
+                                            </Grid>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Background="{StaticResource BgElevatedBrush}" 
+                                                        CornerRadius="4" Padding="8,2">
+                                                    <TextBlock Text="{Binding FromPosition}" 
+                                                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                </Border>
+                                                <TextBlock Text="→" Margin="8,0" 
+                                                           Foreground="{StaticResource TextMutedBrush}"
+                                                           VerticalAlignment="Center"/>
+                                                <Border Background="{StaticResource StatusNormalBgBrush}" 
+                                                        CornerRadius="4" Padding="8,2">
+                                                    <TextBlock Text="{Binding ToPosition}" 
+                                                               Foreground="{StaticResource StatusNormalBrush}"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

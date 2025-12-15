@@ -1,0 +1,21 @@
+# Build outputs
+bin/
+obj/
+
+# IDE and editor files
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Claude Code local settings
+.claude/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Project-specific
+*.log
