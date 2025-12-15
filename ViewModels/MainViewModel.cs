@@ -625,8 +625,19 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public void AddEquipmentAtPosition(EquipmentType type, double x, double y)
     {
-        double width = 50;
-        double height = 50;
+        // Custom sizes per equipment type
+        double width = type switch
+        {
+            EquipmentType.BusBar => 120,
+            EquipmentType.Junction => 30,
+            _ => 50
+        };
+        double height = type switch
+        {
+            EquipmentType.BusBar => 20,
+            EquipmentType.Junction => 30,
+            _ => 50
+        };
 
         // Snap the click point (which becomes the center) to grid
         if (SnapToGrid)
@@ -1511,9 +1522,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private bool IsElectricalEquipment(Equipment eq)
     {
-        return eq.Type is EquipmentType.Breaker or EquipmentType.Switch or EquipmentType.ATS 
-            or EquipmentType.UPS or EquipmentType.PDU or EquipmentType.STS 
-            or EquipmentType.Transformer or EquipmentType.Generator;
+        return eq.Type is EquipmentType.Breaker or EquipmentType.Switch or EquipmentType.ATS
+            or EquipmentType.UPS or EquipmentType.PDU or EquipmentType.STS
+            or EquipmentType.Transformer or EquipmentType.Generator
+            or EquipmentType.BusBar or EquipmentType.Junction;
     }
 
     private void SaveAutoSave()

@@ -418,7 +418,6 @@
             <Grid Grid.Column="1">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 
@@ -492,163 +491,275 @@
                                             Command="{Binding FitToViewCommand}" Content="⊡" Margin="4,0,0,0"/>
                                 </StackPanel>
                             </Border>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-                
-                <!-- Edit Mode Toolbar -->
-                <Border Grid.Row="1" Background="{StaticResource BgTertiaryBrush}"
-                        BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="0,0,0,1"
-                        Padding="20,8"
-                        Visibility="{Binding IsEditMode, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" MinWidth="200"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        
-                        <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                            <StackPanel Orientation="Horizontal">
-                            <!-- Selection Tool -->
-                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,8,0"
-                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Select}"
-                                          Command="{Binding SelectToolCommand}" CommandParameter="Select">
-                                <TextBlock Text="► Select"/>
-                            </ToggleButton>
-                            
-                            <Border Width="1" Background="{StaticResource BorderMutedBrush}" Margin="8,2"/>
-                            
-                            <!-- Equipment Types -->
-                            <TextBlock Text="Add:" Foreground="{StaticResource TextSecondaryBrush}" 
-                                       VerticalAlignment="Center" Margin="8,0,8,0"/>
-                            
-                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,4,0"
-                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Valve}"
-                                          Command="{Binding SelectToolCommand}" CommandParameter="Valve">
+                            <Button x:Name="ExportImageButton" Style="{StaticResource SecondaryButtonStyle}"
+                                    Padding="8,6" Margin="12,0,0,0" Click="ExportToImage_Click"
+                                    ToolTip="Export to Image">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="✕" Margin="0,0,4,0"/>
-                                    <TextBlock Text="Valve"/>
+                                    <TextBlock Text="📷" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Export"/>
                                 </StackPanel>
-                            </ToggleButton>
-                            
-                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,4,0"
-                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Breaker}"
-                                          Command="{Binding SelectToolCommand}" CommandParameter="Breaker">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="▭" Margin="0,0,4,0"/>
-                                    <TextBlock Text="Breaker"/>
-                                </StackPanel>
-                            </ToggleButton>
-                            
-                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,4,0"
-                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Pump}"
-                                          Command="{Binding SelectToolCommand}" CommandParameter="Pump">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="◯" Margin="0,0,4,0"/>
-                                    <TextBlock Text="Pump"/>
-                                </StackPanel>
-                            </ToggleButton>
-                            
-                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,4,0"
-                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Generator}"
-                                          Command="{Binding SelectToolCommand}" CommandParameter="Generator">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="⚡" Margin="0,0,4,0"/>
-                                    <TextBlock Text="Generator"/>
-                                </StackPanel>
-                            </ToggleButton>
-                            
-                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,4,0"
-                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=ATS}"
-                                          Command="{Binding SelectToolCommand}" CommandParameter="ATS">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="⇄" Margin="0,0,4,0"/>
-                                    <TextBlock Text="ATS"/>
-                                </StackPanel>
-                            </ToggleButton>
-
-                            <Border Width="1" Background="{StaticResource BorderMutedBrush}" Margin="8,2"/>
-
-                            <!-- Label Tool -->
-                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,4,0"
-                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Label}"
-                                          Command="{Binding SelectToolCommand}" CommandParameter="Label">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="T" FontWeight="Bold" Margin="0,0,4,0"/>
-                                    <TextBlock Text="Label"/>
-                                </StackPanel>
-                            </ToggleButton>
-
-                            <Border Width="1" Background="{StaticResource BorderMutedBrush}" Margin="8,2"/>
-
-                            <!-- Connection Tools -->
-                            <TextBlock Text="Connect:" Foreground="{StaticResource TextSecondaryBrush}" 
-                                       VerticalAlignment="Center" Margin="8,0,8,0"/>
-                            
-                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,4,0"
-                                          IsChecked="{Binding SelectedConnectionTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Pipe}"
-                                          Command="{Binding SelectConnectionToolCommand}" CommandParameter="Pipe">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="─" Foreground="#FF0066CC" Margin="0,0,4,0"/>
-                                    <TextBlock Text="Pipe"/>
-                                </StackPanel>
-                            </ToggleButton>
-                            
-                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="0,0,4,0"
-                                          IsChecked="{Binding SelectedConnectionTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Electrical}"
-                                          Command="{Binding SelectConnectionToolCommand}" CommandParameter="Electrical">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="╌" Foreground="#FFFFD700" Margin="0,0,4,0"/>
-                                    <TextBlock Text="Electrical"/>
-                                </StackPanel>
-                            </ToggleButton>
-                            
-                            <Border Width="1" Background="{StaticResource BorderMutedBrush}" Margin="8,2"/>
-                            
-                            <!-- Snap and Grid -->
-                            <ToggleButton Style="{StaticResource FilterTabStyle}" Padding="10,6" Margin="8,0,8,0"
-                                          IsChecked="{Binding SnapToGrid}">
-                                <TextBlock Text="⊞ Snap"/>
-                            </ToggleButton>
-                            
-                            <TextBlock Text="Grid:" Foreground="{StaticResource TextSecondaryBrush}" 
-                                       VerticalAlignment="Center" Margin="0,0,8,0"/>
-                            <ComboBox ItemsSource="{Binding GridSizeOptions}" 
-                                      SelectedItem="{Binding GridSize}"
-                                      Style="{StaticResource DarkComboBoxStyle}"
-                                      Width="60"/>
-                            
-                            <Border Width="1" Background="{StaticResource BorderMutedBrush}" Margin="8,2"/>
-                            
-                            <!-- Group Button -->
-                            <Button Style="{StaticResource SecondaryButtonStyle}" Padding="10,6"
-                                    Command="{Binding CreateGroupCommand}"
-                                    ToolTip="Group selected items">
-                                <TextBlock Text="⧉ Group"/>
                             </Button>
-                            </StackPanel>
-                        </ScrollViewer>
-                        
-                        <!-- Connection Hint / Selection Count -->
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="16,0,0,0">
-                            <TextBlock Text="{Binding ConnectionHint}" 
-                                       Foreground="{StaticResource StatusWarningBrush}"
-                                       VerticalAlignment="Center" Margin="0,0,16,0"
-                                       Visibility="{Binding ConnectionHint, Converter={StaticResource NullToVisibilityConverter}}"
-                                       TextTrimming="CharacterEllipsis"
-                                       MaxWidth="200"/>
-                            <TextBlock VerticalAlignment="Center"
-                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                       Visibility="{Binding SelectedCount, Converter={StaticResource GreaterThanZeroConverter}}">
-                                <Run Text="{Binding SelectedCount, Mode=OneWay}"/>
-                                <Run Text=" selected"/>
-                            </TextBlock>
                         </StackPanel>
                     </Grid>
                 </Border>
                 
-                <!-- Canvas -->
-                <Grid Grid.Row="2" ClipToBounds="True">
+                <!-- Canvas Area with Tool Sidebar -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Tool Sidebar (Edit Mode Only) -->
+                    <Border Grid.Column="0" Background="{StaticResource BgSecondaryBrush}"
+                            BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="0,0,1,0"
+                            Width="180"
+                            Visibility="{Binding IsEditMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Margin="8">
+
+                                    <!-- Selection Group -->
+                                    <Expander Header="SELECTION" Style="{StaticResource ToolGroupExpanderStyle}">
+                                        <StackPanel>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Select}"
+                                                          Command="{Binding SelectToolCommand}" CommandParameter="Select">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="►" Width="24"/>
+                                                    <TextBlock Text="Select"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                        </StackPanel>
+                                    </Expander>
+
+                                    <!-- Electrical Group -->
+                                    <Expander Header="ELECTRICAL" Style="{StaticResource ToolGroupExpanderStyle}">
+                                        <StackPanel>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Breaker}"
+                                                          Command="{Binding SelectToolCommand}" CommandParameter="Breaker">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="▭" Width="24" Foreground="#FFFFD700"/>
+                                                    <TextBlock Text="Breaker"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Switch}"
+                                                          Command="{Binding SelectToolCommand}" CommandParameter="Switch">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="◉" Width="24" Foreground="#FFFFD700"/>
+                                                    <TextBlock Text="Switch"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=ATS}"
+                                                          Command="{Binding SelectToolCommand}" CommandParameter="ATS">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="⇄" Width="24" Foreground="#FFFFD700"/>
+                                                    <TextBlock Text="ATS"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=UPS}"
+                                                          Command="{Binding SelectToolCommand}" CommandParameter="UPS">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="🔋" Width="24" Foreground="#FFFFD700"/>
+                                                    <TextBlock Text="UPS"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=PDU}"
+                                                          Command="{Binding SelectToolCommand}" CommandParameter="PDU">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="▦" Width="24" Foreground="#FFFFD700"/>
+                                                    <TextBlock Text="PDU"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=STS}"
+                                                          Command="{Binding SelectToolCommand}" CommandParameter="STS">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="⇌" Width="24" Foreground="#FFFFD700"/>
+                                                    <TextBlock Text="STS"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Transformer}"
+                                                          Command="{Binding SelectToolCommand}" CommandParameter="Transformer">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="◎" Width="24" Foreground="#FFFFD700"/>
+                                                    <TextBlock Text="Transformer"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Generator}"
+                                                          Command="{Binding SelectToolCommand}" CommandParameter="Generator">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="⚡" Width="24" Foreground="#FFFFD700"/>
+                                                    <TextBlock Text="Generator"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                        </StackPanel>
+                                    </Expander>
+
+                                    <!-- Mechanical Group -->
+                                    <Expander Header="MECHANICAL" Style="{StaticResource ToolGroupExpanderStyle}">
+                                        <StackPanel>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Valve}"
+                                                          Command="{Binding SelectToolCommand}" CommandParameter="Valve">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="✕" Width="24" Foreground="#FF0066CC"/>
+                                                    <TextBlock Text="Valve"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Pump}"
+                                                          Command="{Binding SelectToolCommand}" CommandParameter="Pump">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="◯" Width="24" Foreground="#FF0066CC"/>
+                                                    <TextBlock Text="Pump"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Motor}"
+                                                          Command="{Binding SelectToolCommand}" CommandParameter="Motor">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="⚙" Width="24" Foreground="#FF0066CC"/>
+                                                    <TextBlock Text="Motor"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Chiller}"
+                                                          Command="{Binding SelectToolCommand}" CommandParameter="Chiller">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="❄" Width="24" Foreground="#FF0066CC"/>
+                                                    <TextBlock Text="Chiller"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                        </StackPanel>
+                                    </Expander>
+
+                                    <!-- Distribution Group -->
+                                    <Expander Header="DISTRIBUTION" Style="{StaticResource ToolGroupExpanderStyle}">
+                                        <StackPanel>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=BusBar}"
+                                                          Command="{Binding SelectToolCommand}" CommandParameter="BusBar">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="▬" Width="24" Foreground="#FFFFD700"/>
+                                                    <TextBlock Text="Bus Bar"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Junction}"
+                                                          Command="{Binding SelectToolCommand}" CommandParameter="Junction">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="⬤" Width="24" Foreground="#FFFFD700"/>
+                                                    <TextBlock Text="Junction"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                        </StackPanel>
+                                    </Expander>
+
+                                    <!-- Annotations Group -->
+                                    <Expander Header="ANNOTATIONS" Style="{StaticResource ToolGroupExpanderStyle}">
+                                        <StackPanel>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Label}"
+                                                          Command="{Binding SelectToolCommand}" CommandParameter="Label">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="T" Width="24" FontWeight="Bold"/>
+                                                    <TextBlock Text="Label"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                        </StackPanel>
+                                    </Expander>
+
+                                    <!-- Connections Group -->
+                                    <Expander Header="CONNECTIONS" Style="{StaticResource ToolGroupExpanderStyle}">
+                                        <StackPanel>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedConnectionTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Pipe}"
+                                                          Command="{Binding SelectConnectionToolCommand}" CommandParameter="Pipe">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="─" Width="24" Foreground="#FF0066CC"/>
+                                                    <TextBlock Text="Pipe"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SelectedConnectionTool, Mode=OneWay, Converter={StaticResource FilterToBoolConverter}, ConverterParameter=Electrical}"
+                                                          Command="{Binding SelectConnectionToolCommand}" CommandParameter="Electrical">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="╌" Width="24" Foreground="#FFFFD700"/>
+                                                    <TextBlock Text="Electrical"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                        </StackPanel>
+                                    </Expander>
+
+                                    <!-- Canvas Tools Group -->
+                                    <Expander Header="CANVAS" Style="{StaticResource ToolGroupExpanderStyle}">
+                                        <StackPanel>
+                                            <ToggleButton Style="{StaticResource VerticalToolButtonStyle}"
+                                                          IsChecked="{Binding SnapToGrid}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="⊞" Width="24"/>
+                                                    <TextBlock Text="Snap to Grid"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="Grid Size:" Foreground="{StaticResource TextSecondaryBrush}"
+                                                           VerticalAlignment="Center" Margin="8,0,8,0" FontSize="12"/>
+                                                <ComboBox Grid.Column="1" ItemsSource="{Binding GridSizeOptions}"
+                                                          SelectedItem="{Binding GridSize}"
+                                                          Style="{StaticResource SidebarComboBoxStyle}"/>
+                                            </Grid>
+                                            <Button Style="{StaticResource CanvasToolButtonStyle}"
+                                                    Command="{Binding CreateGroupCommand}"
+                                                    ToolTip="Group selected items">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="⧉" Width="24"/>
+                                                    <TextBlock Text="Group"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
+                                    </Expander>
+
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <!-- Status Footer -->
+                            <Border Grid.Row="1" BorderBrush="{StaticResource BorderMutedBrush}" BorderThickness="0,1,0,0"
+                                    Padding="8,6">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding ConnectionHint}"
+                                               Foreground="{StaticResource StatusWarningBrush}"
+                                               FontSize="11" TextWrapping="Wrap"
+                                               Visibility="{Binding ConnectionHint, Converter={StaticResource NullToVisibilityConverter}}"
+                                               Margin="0,0,0,4"/>
+                                    <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11"
+                                               Visibility="{Binding SelectedCount, Converter={StaticResource GreaterThanZeroConverter}}">
+                                        <Run Text="{Binding SelectedCount, Mode=OneWay}"/>
+                                        <Run Text=" selected"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- Canvas -->
+                    <Grid Grid.Column="1" ClipToBounds="True">
                     <!-- Grid Background - fills parent and tiles infinitely -->
                     <Border x:Name="GridBackground"
                             HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
@@ -842,10 +953,25 @@
                                           IsHitTestVisible="False">
                                         <Path.Style>
                                             <Style TargetType="Path">
+                                                <Setter Property="StrokeDashOffset" Value="0"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                                         <Setter Property="StrokeThickness" Value="6"/>
                                                         <Setter Property="Stroke" Value="#FFFFD700"/>
+                                                    </DataTrigger>
+                                                    <!-- Flowing animation for energized electrical connections -->
+                                                    <DataTrigger Binding="{Binding IsEnergized}" Value="True">
+                                                        <DataTrigger.EnterActions>
+                                                            <BeginStoryboard x:Name="FlowAnimation">
+                                                                <Storyboard RepeatBehavior="Forever">
+                                                                    <DoubleAnimation Storyboard.TargetProperty="StrokeDashOffset"
+                                                                                     From="0" To="-12" Duration="0:0:0.5"/>
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </DataTrigger.EnterActions>
+                                                        <DataTrigger.ExitActions>
+                                                            <StopStoryboard BeginStoryboardName="FlowAnimation"/>
+                                                        </DataTrigger.ExitActions>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -1192,7 +1318,8 @@
                     </Grid>
                 </Grid>
             </Grid>
-            
+        </Grid>
+
             <!-- Detail Panel -->
             <Border Grid.Column="2"
                     Background="{StaticResource BgSecondaryBrush}"

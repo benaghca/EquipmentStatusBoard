@@ -97,6 +97,8 @@ public class EquipmentTypeToIconConverter : IValueConverter
                 EquipmentType.Switch => "◉",
                 EquipmentType.PDU => "▦",
                 EquipmentType.STS => "⇌",
+                EquipmentType.BusBar => "▬",
+                EquipmentType.Junction => "⬤",
                 _ => "●"
             };
         }

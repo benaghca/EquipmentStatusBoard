@@ -1,8 +1,12 @@
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using Microsoft.Win32;
 using EquipmentStatusTracker.WPF.Models;
 using EquipmentStatusTracker.WPF.ViewModels;
 
@@ -903,5 +907,187 @@ public partial class MainWindow : Window
         var delta = e.Delta > 0 ? 0.1 : -0.1;
         var newZoom = Math.Clamp(ViewModel.ZoomLevel + delta, 0.25, 3.0);
         ViewModel.ZoomLevel = newZoom;
+    }
+
+    private void ExportToImage_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // Check if there's anything to export
+            if (ViewModel.EquipmentCollection.Count == 0 && ViewModel.Groups.Count == 0 && ViewModel.Labels.Count == 0)
+            {
+                MessageBox.Show("There is no content to export.", "Export to Image", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Calculate bounds of all content
+            double minX = double.MaxValue, minY = double.MaxValue;
+            double maxX = double.MinValue, maxY = double.MinValue;
+
+            foreach (var eq in ViewModel.EquipmentCollection)
+            {
+                minX = Math.Min(minX, eq.X);
+                minY = Math.Min(minY, eq.Y);
+                maxX = Math.Max(maxX, eq.X + eq.Width);
+                maxY = Math.Max(maxY, eq.Y + eq.Height + 30); // Account for label below
+            }
+
+            foreach (var group in ViewModel.Groups)
+            {
+                minX = Math.Min(minX, group.X);
+                minY = Math.Min(minY, group.Y);
+                maxX = Math.Max(maxX, group.X + group.Width);
+                maxY = Math.Max(maxY, group.Y + group.Height);
+            }
+
+            foreach (var label in ViewModel.Labels)
+            {
+                minX = Math.Min(minX, label.X);
+                minY = Math.Min(minY, label.Y);
+                maxX = Math.Max(maxX, label.X + 200); // Estimate label width
+                maxY = Math.Max(maxY, label.Y + label.FontSize + 20);
+            }
+
+            // Add padding
+            double padding = 50;
+            minX -= padding;
+            minY -= padding;
+            maxX += padding;
+            maxY += padding;
+
+            double contentWidth = maxX - minX;
+            double contentHeight = maxY - minY;
+
+            // Store current transform values
+            double originalPanX = ViewModel.PanX;
+            double originalPanY = ViewModel.PanY;
+            double originalZoom = ViewModel.ZoomLevel;
+
+            // Set zoom to 1 and pan to show content from (0,0) at top-left
+            ViewModel.ZoomLevel = 1.0;
+            ViewModel.PanX = -minX;
+            ViewModel.PanY = -minY;
+
+            // Force layout update
+            Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+
+            // Find the canvas container (parent of all overlays)
+            var canvasContainer = DiagramCanvas.Parent as Grid;
+            if (canvasContainer == null)
+            {
+                MessageBox.Show("Could not find canvas container.", "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            // Create bitmap with content dimensions
+            int pixelWidth = (int)Math.Ceiling(contentWidth);
+            int pixelHeight = (int)Math.Ceiling(contentHeight);
+
+            // Clamp to reasonable size (max 8000x8000)
+            double scale = 1.0;
+            if (pixelWidth > 8000 || pixelHeight > 8000)
+            {
+                scale = Math.Min(8000.0 / pixelWidth, 8000.0 / pixelHeight);
+                pixelWidth = (int)(pixelWidth * scale);
+                pixelHeight = (int)(pixelHeight * scale);
+            }
+
+            // Render with VisualBrush approach for accurate capture
+            var drawingVisual = new DrawingVisual();
+            using (var context = drawingVisual.RenderOpen())
+            {
+                // Draw background
+                context.DrawRectangle(
+                    new SolidColorBrush(Color.FromRgb(10, 14, 20)),
+                    null,
+                    new Rect(0, 0, pixelWidth, pixelHeight));
+
+                // Draw grid pattern
+                var gridPen = new Pen(new SolidColorBrush(Color.FromArgb(48, 96, 108, 128)), 1);
+                gridPen.Freeze();
+                int gridSize = ViewModel.GridSize;
+                double scaledGridSize = gridSize * scale;
+                for (double x = 0; x < pixelWidth; x += scaledGridSize)
+                {
+                    context.DrawLine(gridPen, new Point(x, 0), new Point(x, pixelHeight));
+                }
+                for (double y = 0; y < pixelHeight; y += scaledGridSize)
+                {
+                    context.DrawLine(gridPen, new Point(0, y), new Point(pixelWidth, y));
+                }
+
+                // Apply scale transform for the content
+                if (scale != 1.0)
+                {
+                    context.PushTransform(new ScaleTransform(scale, scale));
+                }
+
+                // Create a visual brush from the entire canvas container
+                var visualBrush = new VisualBrush(canvasContainer)
+                {
+                    Stretch = Stretch.None,
+                    AlignmentX = AlignmentX.Left,
+                    AlignmentY = AlignmentY.Top,
+                    ViewboxUnits = BrushMappingMode.Absolute,
+                    Viewbox = new Rect(0, 0, contentWidth, contentHeight)
+                };
+
+                context.DrawRectangle(visualBrush, null, new Rect(0, 0, contentWidth, contentHeight));
+
+                if (scale != 1.0)
+                {
+                    context.Pop();
+                }
+            }
+
+            // Restore original transform
+            ViewModel.PanX = originalPanX;
+            ViewModel.PanY = originalPanY;
+            ViewModel.ZoomLevel = originalZoom;
+
+            var renderBitmap = new RenderTargetBitmap(
+                pixelWidth, pixelHeight, 96, 96, PixelFormats.Pbgra32);
+            renderBitmap.Render(drawingVisual);
+
+            // Show save dialog
+            var dialog = new SaveFileDialog
+            {
+                Filter = "PNG Image (*.png)|*.png|JPEG Image (*.jpg)|*.jpg|All Files (*.*)|*.*",
+                Title = "Export Diagram to Image",
+                FileName = $"{ViewModel.ProjectName}.png",
+                DefaultExt = "png"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                BitmapEncoder encoder;
+                var extension = System.IO.Path.GetExtension(dialog.FileName).ToLower();
+
+                if (extension == ".jpg" || extension == ".jpeg")
+                {
+                    encoder = new JpegBitmapEncoder { QualityLevel = 95 };
+                }
+                else
+                {
+                    encoder = new PngBitmapEncoder();
+                }
+
+                encoder.Frames.Add(BitmapFrame.Create(renderBitmap));
+
+                using (var stream = File.Create(dialog.FileName))
+                {
+                    encoder.Save(stream);
+                }
+
+                MessageBox.Show($"Image exported successfully to:\n{dialog.FileName}", "Export Complete",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Export error: {ex.Message}");
+            MessageBox.Show($"Failed to export image: {ex.Message}", "Export Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 }

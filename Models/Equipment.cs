@@ -15,7 +15,9 @@ public enum EquipmentType
     Transformer,
     Switch,
     PDU,
-    STS
+    STS,
+    BusBar,
+    Junction
 }
 
 public enum EquipmentStatus
@@ -149,6 +151,8 @@ public partial class Equipment : ObservableObject
             EquipmentType.Switch => ["open", "closed"],
             EquipmentType.PDU => ["on", "off"],
             EquipmentType.STS => ["source 1", "source 2", "bypass", "off"],
+            EquipmentType.BusBar => ["energized", "isolated"],
+            EquipmentType.Junction => ["connected"],
             _ => ["on", "off"]
         };
     }
@@ -169,6 +173,8 @@ public partial class Equipment : ObservableObject
             EquipmentType.PDU => "on",
             EquipmentType.Transformer => "energized",
             EquipmentType.STS => "source 1",
+            EquipmentType.BusBar => "energized",
+            EquipmentType.Junction => "connected",
             _ => "unknown"
         };
     }
@@ -192,6 +198,8 @@ public partial class Equipment : ObservableObject
             EquipmentType.STS => CurrentPosition.Equals("source 1", StringComparison.OrdinalIgnoreCase) ||
                                  CurrentPosition.Equals("source 2", StringComparison.OrdinalIgnoreCase),
             EquipmentType.Transformer => CurrentPosition.Equals("energized", StringComparison.OrdinalIgnoreCase),
+            EquipmentType.BusBar => CurrentPosition.Equals("energized", StringComparison.OrdinalIgnoreCase),
+            EquipmentType.Junction => true, // Always conducts (passive splitter)
             _ => false
         };
     }
@@ -223,6 +231,8 @@ public partial class Equipment : ObservableObject
         if (lower.Contains("switch")) return EquipmentType.Switch;
         if (lower.Contains("pdu")) return EquipmentType.PDU;
         if (lower.Contains("sts")) return EquipmentType.STS;
+        if (lower.Contains("bus")) return EquipmentType.BusBar;
+        if (lower.Contains("junction") || lower.Contains("node")) return EquipmentType.Junction;
 
         return EquipmentType.Valve;
     }
