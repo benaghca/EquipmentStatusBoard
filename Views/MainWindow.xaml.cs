@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -45,10 +46,23 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        
+
         // Add window-level mouse handlers for reliable drag tracking
         this.MouseMove += Window_MouseMove;
         this.MouseLeftButtonUp += Window_MouseLeftButtonUp;
+
+        // Set initial viewport size after layout
+        Loaded += (s, e) =>
+        {
+            ViewModel.ViewportWidth = DiagramCanvas.ActualWidth;
+            ViewModel.ViewportHeight = DiagramCanvas.ActualHeight;
+        };
+    }
+
+    private void DiagramCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        ViewModel.ViewportWidth = e.NewSize.Width;
+        ViewModel.ViewportHeight = e.NewSize.Height;
     }
 
     private void Window_MouseMove(object sender, MouseEventArgs e)
@@ -138,7 +152,10 @@ public partial class MainWindow : Window
                 e.Handled = true;
                 return;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error resizing equipment: {ex.Message}");
+            }
         }
 
         // Handle group resizing
@@ -183,7 +200,10 @@ public partial class MainWindow : Window
                 e.Handled = true;
                 return;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error resizing group: {ex.Message}");
+            }
         }
         
         // Handle group dragging (only start if mouse has moved)
@@ -211,7 +231,10 @@ public partial class MainWindow : Window
                     e.Handled = true;
                     return;
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error dragging group: {ex.Message}");
+                }
             }
         }
         
@@ -240,8 +263,9 @@ public partial class MainWindow : Window
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.WriteLine($"Error dragging equipment: {ex.Message}");
                 _isDraggingEquipment = false;
                 _draggedEquipment = null;
                 this.ReleaseMouseCapture();
@@ -699,6 +723,21 @@ public partial class MainWindow : Window
         e.Handled = _isResizingGroup || _isDraggingGroup;
     }
 
+    private void Label_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement element && element.DataContext is CanvasLabel label)
+        {
+            // Deselect other labels
+            foreach (var l in ViewModel.Labels)
+            {
+                l.IsSelected = l == label;
+            }
+            ViewModel.SelectedLabel = label;
+            ViewModel.ClearSelection();
+            e.Handled = true;
+        }
+    }
+
     private void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         var source = e.OriginalSource as FrameworkElement;
@@ -712,9 +751,17 @@ public partial class MainWindow : Window
                 // Check if an equipment type tool is selected
                 if (!string.IsNullOrEmpty(ViewModel.SelectedTool) && ViewModel.SelectedTool != "Select")
                 {
-                    // Add equipment at click position
                     var pos = e.GetPosition(EquipmentOverlay);
-                    
+
+                    // Handle Label tool
+                    if (ViewModel.SelectedTool == "Label")
+                    {
+                        ViewModel.AddLabelAtPosition(pos.X, pos.Y);
+                        e.Handled = true;
+                        return;
+                    }
+
+                    // Add equipment at click position
                     if (Enum.TryParse<EquipmentType>(ViewModel.SelectedTool, out var equipmentType))
                     {
                         ViewModel.AddEquipmentAtPosition(equipmentType, pos.X, pos.Y);

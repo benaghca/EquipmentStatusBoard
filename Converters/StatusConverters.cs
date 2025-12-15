@@ -96,6 +96,7 @@ public class EquipmentTypeToIconConverter : IValueConverter
                 EquipmentType.Transformer => "◎",
                 EquipmentType.Switch => "◉",
                 EquipmentType.PDU => "▦",
+                EquipmentType.STS => "⇌",
                 _ => "●"
             };
         }
@@ -237,7 +238,56 @@ public class HalfValueConverter : IValueConverter
         {
             return d / 2;
         }
-        return 0;
+        return 0.0;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotImplementedException();
+}
+
+/// <summary>
+/// Calculates (value / 2) - offset for centering elements on anchor points.
+/// Parameter should be the offset to subtract (typically half the element width).
+/// </summary>
+public class HalfMinusOffsetConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        double offset = 4.0; // Default offset for 8px elements
+        if (parameter is string s && double.TryParse(s, out var parsed))
+        {
+            offset = parsed;
+        }
+
+        if (value is double d)
+        {
+            return (d / 2) - offset;
+        }
+        return -offset;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotImplementedException();
+}
+
+/// <summary>
+/// Subtracts the parameter value from the input. Used for positioning elements.
+/// </summary>
+public class SubtractConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        double offset = 0;
+        if (parameter is string s && double.TryParse(s, out var parsed))
+        {
+            offset = parsed;
+        }
+
+        if (value is double d)
+        {
+            return d - offset;
+        }
+        return -offset;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

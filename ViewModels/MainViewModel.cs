@@ -9,10 +9,12 @@ using EquipmentStatusTracker.WPF.Services;
 
 namespace EquipmentStatusTracker.WPF.ViewModels;
 
-public partial class MainViewModel : ObservableObject
+public partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly ProjectService _projectService = new();
     private readonly UndoRedoService _undoRedoService = new();
+    private readonly EventHandler? _undoRedoStateChangedHandler;
+    private bool _disposed;
 
     [ObservableProperty]
     private string _projectName = "Untitled Project";
@@ -34,6 +36,12 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private ObservableCollection<EquipmentGroup> _groups = new();
+
+    [ObservableProperty]
+    private ObservableCollection<CanvasLabel> _labels = new();
+
+    [ObservableProperty]
+    private CanvasLabel? _selectedLabel;
 
     [ObservableProperty]
     private Equipment? _selectedEquipment;
@@ -102,10 +110,19 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private int _gridSize = 20;
 
+    // Viewport dimensions (set by the View)
+    [ObservableProperty]
+    private double _viewportWidth = 800;
+
+    [ObservableProperty]
+    private double _viewportHeight = 600;
+
     private string _pendingSourceAnchor = "Center";
     private string _pendingTargetAnchor = "Center";
 
     public int[] GridSizeOptions { get; } = { 10, 20, 30, 40, 50 };
+
+    public AnchorPoint[] AnchorPointOptions { get; } = Enum.GetValues<AnchorPoint>();
 
     // Selection
     private List<Equipment> _selectedEquipmentItems = new();
@@ -125,11 +142,12 @@ public partial class MainViewModel : ObservableObject
 
     public MainViewModel()
     {
-        _undoRedoService.StateChanged += (s, e) =>
+        _undoRedoStateChangedHandler = (s, e) =>
         {
             OnPropertyChanged(nameof(CanUndo));
             OnPropertyChanged(nameof(CanRedo));
         };
+        _undoRedoService.StateChanged += _undoRedoStateChangedHandler;
 
         // Try to load autosave
         var autoSaved = _projectService.LoadAutoSave();
@@ -137,6 +155,28 @@ public partial class MainViewModel : ObservableObject
         {
             LoadProject(autoSaved);
         }
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+
+        if (disposing)
+        {
+            // Unsubscribe from events to prevent memory leaks
+            if (_undoRedoStateChangedHandler != null)
+            {
+                _undoRedoService.StateChanged -= _undoRedoStateChangedHandler;
+            }
+        }
+
+        _disposed = true;
     }
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
@@ -157,13 +197,22 @@ public partial class MainViewModel : ObservableObject
         {
             group.IsSelected = group == value;
         }
-        
+
         // Open detail panel when group is selected, close equipment selection
         if (value != null)
         {
             SelectedEquipment = null;
             IsHistoryPanelOpen = false;
             IsDetailPanelOpen = true;
+        }
+    }
+
+    partial void OnGridSizeChanging(int value)
+    {
+        // Prevent division by zero - enforce minimum grid size of 1
+        if (value < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(GridSize), "Grid size must be at least 1");
         }
     }
 
@@ -206,6 +255,7 @@ public partial class MainViewModel : ObservableObject
         Pipes = new ObservableCollection<PipeConnection>(project.Pipes);
         Connections = new ObservableCollection<Connection>(project.Connections ?? new List<Connection>());
         Groups = new ObservableCollection<EquipmentGroup>(project.Groups ?? new List<EquipmentGroup>());
+        Labels = new ObservableCollection<CanvasLabel>(project.Labels ?? new List<CanvasLabel>());
         IsWelcomeVisible = false;
         _undoRedoService.Clear();
         ApplyFilter();
@@ -294,7 +344,8 @@ public partial class MainViewModel : ObservableObject
                 History = History.ToList(),
                 Pipes = Pipes.ToList(),
                 Connections = Connections.ToList(),
-                Groups = Groups.ToList()
+                Groups = Groups.ToList(),
+                Labels = Labels.ToList()
             };
             _projectService.SaveStatus(project, dialog.FileName);
             
@@ -374,8 +425,16 @@ public partial class MainViewModel : ObservableObject
     {
         if (SelectedEquipment == null) return;
 
+        // Validate that position is valid for this equipment type
+        var validPositions = SelectedEquipment.GetPositionOptions();
+        if (!validPositions.Contains(position, StringComparer.OrdinalIgnoreCase))
+        {
+            System.Diagnostics.Debug.WriteLine($"Invalid position '{position}' for equipment type {SelectedEquipment.Type}. Valid options: {string.Join(", ", validPositions)}");
+            return;
+        }
+
         var oldPosition = SelectedEquipment.CurrentPosition;
-        if (oldPosition == position) return;
+        if (string.Equals(oldPosition, position, StringComparison.OrdinalIgnoreCase)) return;
 
         SelectedEquipment.CurrentPosition = position;
         SelectedEquipment.LastUpdated = DateTime.Now;
@@ -404,10 +463,18 @@ public partial class MainViewModel : ObservableObject
     private void SetNormalPosition(string position)
     {
         if (SelectedEquipment == null) return;
-        
+
+        // Validate that position is valid for this equipment type
+        var validPositions = SelectedEquipment.GetPositionOptions();
+        if (!validPositions.Contains(position, StringComparer.OrdinalIgnoreCase))
+        {
+            System.Diagnostics.Debug.WriteLine($"Invalid normal position '{position}' for equipment type {SelectedEquipment.Type}. Valid options: {string.Join(", ", validPositions)}");
+            return;
+        }
+
         SelectedEquipment.NormalPosition = position;
         SelectedEquipment.LastUpdated = DateTime.Now;
-        
+
         UpdateStatusCounts();
         ApplyFilter();
         SaveAutoSave();
@@ -434,9 +501,53 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void FitToView()
     {
-        ZoomLevel = 1.0;
-        PanX = 0;
-        PanY = 0;
+        if (EquipmentCollection.Count == 0)
+        {
+            // No equipment, reset to default
+            ZoomLevel = 1.0;
+            PanX = 50;
+            PanY = 50;
+            return;
+        }
+
+        // Calculate bounding box of all equipment
+        double minX = EquipmentCollection.Min(e => e.X);
+        double minY = EquipmentCollection.Min(e => e.Y);
+        double maxX = EquipmentCollection.Max(e => e.X + e.Width);
+        double maxY = EquipmentCollection.Max(e => e.Y + e.Height);
+
+        // Include groups in bounding box
+        if (Groups.Count > 0)
+        {
+            minX = Math.Min(minX, Groups.Min(g => g.X));
+            minY = Math.Min(minY, Groups.Min(g => g.Y));
+            maxX = Math.Max(maxX, Groups.Max(g => g.X + g.Width));
+            maxY = Math.Max(maxY, Groups.Max(g => g.Y + g.Height));
+        }
+
+        double contentWidth = maxX - minX;
+        double contentHeight = maxY - minY;
+
+        // Add padding (10% on each side)
+        double padding = 0.1;
+        double paddedWidth = contentWidth * (1 + padding * 2);
+        double paddedHeight = contentHeight * (1 + padding * 2);
+
+        // Calculate zoom to fit
+        double zoomX = ViewportWidth / paddedWidth;
+        double zoomY = ViewportHeight / paddedHeight;
+        double newZoom = Math.Min(zoomX, zoomY);
+
+        // Clamp zoom to reasonable bounds
+        newZoom = Math.Clamp(newZoom, 0.25, 2.0);
+
+        // Calculate pan to center the content
+        double centerX = (minX + maxX) / 2;
+        double centerY = (minY + maxY) / 2;
+
+        ZoomLevel = newZoom;
+        PanX = (ViewportWidth / 2) - (centerX * newZoom);
+        PanY = (ViewportHeight / 2) - (centerY * newZoom);
     }
 
     [RelayCommand]
@@ -514,11 +625,19 @@ public partial class MainViewModel : ObservableObject
 
     public void AddEquipmentAtPosition(EquipmentType type, double x, double y)
     {
+        double width = 50;
+        double height = 50;
+
+        // Snap the click point (which becomes the center) to grid
         if (SnapToGrid)
         {
             x = Math.Round(x / GridSize) * GridSize;
             y = Math.Round(y / GridSize) * GridSize;
         }
+
+        // Click point is center, calculate top-left position
+        double topLeftX = x - width / 2;
+        double topLeftY = y - height / 2;
 
         var equipment = new Equipment
         {
@@ -527,10 +646,10 @@ public partial class MainViewModel : ObservableObject
             Type = type,
             NormalPosition = Equipment.GetDefaultNormalPosition(type),
             CurrentPosition = Equipment.GetDefaultNormalPosition(type),
-            X = x,
-            Y = y,
-            Width = 50,
-            Height = 50
+            X = topLeftX,
+            Y = topLeftY,
+            Width = width,
+            Height = height
         };
 
         EquipmentCollection.Add(equipment);
@@ -545,6 +664,55 @@ public partial class MainViewModel : ObservableObject
         ApplyFilter();
         UpdateStatusCounts();
         RecalculateElectricalStatus();
+        SaveAutoSave();
+    }
+
+    public void AddLabelAtPosition(double x, double y)
+    {
+        // Snap to grid if enabled
+        if (SnapToGrid)
+        {
+            x = Math.Round(x / GridSize) * GridSize;
+            y = Math.Round(y / GridSize) * GridSize;
+        }
+
+        var label = new CanvasLabel
+        {
+            Id = Guid.NewGuid().ToString(),
+            Text = "New Label",
+            X = x,
+            Y = y,
+            FontSize = 14,
+            Color = "#FFFFFF"
+        };
+
+        Labels.Add(label);
+        SelectedLabel = label;
+
+        _undoRedoService.Record(new GenericAction(
+            () => Labels.Remove(label),
+            () => Labels.Add(label),
+            "Add label"
+        ));
+
+        SaveAutoSave();
+    }
+
+    [RelayCommand]
+    private void DeleteSelectedLabel()
+    {
+        if (SelectedLabel == null) return;
+
+        var label = SelectedLabel;
+        Labels.Remove(label);
+
+        _undoRedoService.Record(new GenericAction(
+            () => Labels.Add(label),
+            () => Labels.Remove(label),
+            "Delete label"
+        ));
+
+        SelectedLabel = null;
         SaveAutoSave();
     }
 
@@ -570,8 +738,12 @@ public partial class MainViewModel : ObservableObject
     {
         if (SnapToGrid)
         {
-            newX = Math.Round(newX / GridSize) * GridSize;
-            newY = Math.Round(newY / GridSize) * GridSize;
+            // Snap the GridAnchor point to grid, not the top-left corner
+            var (anchorOffsetX, anchorOffsetY) = equipment.GetAnchorOffset(equipment.GridAnchor);
+            double anchorX = Math.Round((newX + anchorOffsetX) / GridSize) * GridSize;
+            double anchorY = Math.Round((newY + anchorOffsetY) / GridSize) * GridSize;
+            newX = anchorX - anchorOffsetX;
+            newY = anchorY - anchorOffsetY;
         }
 
         equipment.X = newX;
@@ -939,11 +1111,77 @@ public partial class MainViewModel : ObservableObject
             connection.Y1 = sourcePoint.Y;
             connection.X2 = targetPoint.X;
             connection.Y2 = targetPoint.Y;
+
+            // Calculate path data for rendering
+            connection.PathData = CalculateConnectionPath(connection, sourcePoint, targetPoint);
         }
+    }
+
+    private string CalculateConnectionPath(Connection connection, Point start, Point end)
+    {
+        // Use invariant culture for path data to ensure proper parsing
+        var ic = System.Globalization.CultureInfo.InvariantCulture;
+
+        if (connection.Routing == ConnectionRouting.Straight)
+        {
+            return string.Format(ic, "M {0},{1} L {2},{3}", start.X, start.Y, end.X, end.Y);
+        }
+
+        // Orthogonal routing - create right-angle path
+        double dx = end.X - start.X;
+        double dy = end.Y - start.Y;
+
+        // Determine if we should go horizontal-first or vertical-first
+        // based on anchor positions and relative positions
+        bool horizontalFirst = DetermineRoutingDirection(connection, start, end);
+
+        if (horizontalFirst)
+        {
+            // Horizontal first, then vertical
+            double midX = start.X + dx / 2;
+            return string.Format(ic, "M {0},{1} L {2},{3} L {4},{5} L {6},{7}",
+                start.X, start.Y, midX, start.Y, midX, end.Y, end.X, end.Y);
+        }
+        else
+        {
+            // Vertical first, then horizontal
+            double midY = start.Y + dy / 2;
+            return string.Format(ic, "M {0},{1} L {2},{3} L {4},{5} L {6},{7}",
+                start.X, start.Y, start.X, midY, end.X, midY, end.X, end.Y);
+        }
+    }
+
+    private bool DetermineRoutingDirection(Connection connection, Point start, Point end)
+    {
+        // Check if anchors suggest a direction
+        var sourceAnchor = connection.SourceAnchor;
+        var targetAnchor = connection.TargetAnchor;
+
+        // If source is on left/right edge, start horizontal
+        if (sourceAnchor.Contains("Left") || sourceAnchor.Contains("Right"))
+            return true;
+
+        // If source is on top/bottom edge, start vertical
+        if (sourceAnchor.Contains("Top") || sourceAnchor.Contains("Bottom"))
+            return false;
+
+        // For center anchors, use the longer dimension
+        double dx = Math.Abs(end.X - start.X);
+        double dy = Math.Abs(end.Y - start.Y);
+
+        return dx >= dy;
     }
 
     private Point GetAnchorPoint(Equipment equipment, string anchor, Point towardsPoint)
     {
+        // Try to parse as AnchorPoint enum first (new 9-point system)
+        if (Enum.TryParse<AnchorPoint>(anchor, out var anchorPoint))
+        {
+            var (x, y) = equipment.GetAnchorPosition(anchorPoint);
+            return new Point(x, y);
+        }
+
+        // Legacy support for old 4-point string anchors
         var centerX = equipment.X + equipment.Width / 2;
         var centerY = equipment.Y + equipment.Height / 2;
 
@@ -1089,18 +1327,38 @@ public partial class MainViewModel : ObservableObject
 
     public void ResizeEquipment(Equipment equipment, double newX, double newY, double newWidth, double newHeight)
     {
-        // Apply snap to grid if enabled
-        if (SnapToGrid)
-        {
-            newX = Math.Round(newX / GridSize) * GridSize;
-            newY = Math.Round(newY / GridSize) * GridSize;
-            newWidth = Math.Round(newWidth / GridSize) * GridSize;
-            newHeight = Math.Round(newHeight / GridSize) * GridSize;
-        }
-
-        // Ensure minimum size
+        // Ensure minimum size first
         if (newWidth < 30) newWidth = 30;
         if (newHeight < 30) newHeight = 30;
+
+        if (SnapToGrid)
+        {
+            // Snap dimensions to grid
+            newWidth = Math.Round(newWidth / GridSize) * GridSize;
+            newHeight = Math.Round(newHeight / GridSize) * GridSize;
+            if (newWidth < 30) newWidth = 30;
+            if (newHeight < 30) newHeight = 30;
+
+            // Calculate anchor offset with NEW dimensions
+            double anchorOffsetX = equipment.GridAnchor switch
+            {
+                AnchorPoint.TopLeft or AnchorPoint.MiddleLeft or AnchorPoint.BottomLeft => 0,
+                AnchorPoint.TopCenter or AnchorPoint.Center or AnchorPoint.BottomCenter => newWidth / 2,
+                _ => newWidth
+            };
+            double anchorOffsetY = equipment.GridAnchor switch
+            {
+                AnchorPoint.TopLeft or AnchorPoint.TopCenter or AnchorPoint.TopRight => 0,
+                AnchorPoint.MiddleLeft or AnchorPoint.Center or AnchorPoint.MiddleRight => newHeight / 2,
+                _ => newHeight
+            };
+
+            // Snap the GridAnchor point to grid
+            double anchorX = Math.Round((newX + anchorOffsetX) / GridSize) * GridSize;
+            double anchorY = Math.Round((newY + anchorOffsetY) / GridSize) * GridSize;
+            newX = anchorX - anchorOffsetX;
+            newY = anchorY - anchorOffsetY;
+        }
 
         equipment.X = newX;
         equipment.Y = newY;
@@ -1267,7 +1525,8 @@ public partial class MainViewModel : ObservableObject
             History = History.ToList(),
             Pipes = Pipes.ToList(),
             Connections = Connections.ToList(),
-            Groups = Groups.ToList()
+            Groups = Groups.ToList(),
+            Labels = Labels.ToList()
         };
         _projectService.AutoSave(project);
     }

@@ -10,6 +10,7 @@ public class ProjectData
     public List<PipeConnection> Pipes { get; set; } = new();
     public List<Connection> Connections { get; set; } = new();
     public List<EquipmentGroup> Groups { get; set; } = new();
+    public List<CanvasLabel> Labels { get; set; } = new();
     public DateTime? LastSaved { get; set; }
 }
 
@@ -25,6 +26,12 @@ public enum ConnectionType
 {
     Pipe,
     Electrical
+}
+
+public enum ConnectionRouting
+{
+    Straight,
+    Orthogonal
 }
 
 public partial class Connection : ObservableObject
@@ -64,6 +71,12 @@ public partial class Connection : ObservableObject
 
     [ObservableProperty]
     private string _targetAnchor = "Center";
+
+    [ObservableProperty]
+    private ConnectionRouting _routing = ConnectionRouting.Orthogonal;
+
+    [ObservableProperty]
+    private string _pathData = "";
 
     public string StrokeColor => Type == ConnectionType.Electrical 
         ? (IsEnergized ? "#FFFFD700" : "#FF666666")
@@ -124,4 +137,31 @@ public partial class EquipmentGroup : ObservableObject
         OnPropertyChanged(nameof(BorderColor));
         OnPropertyChanged(nameof(BackgroundColor));
     }
+}
+
+public partial class CanvasLabel : ObservableObject
+{
+    [ObservableProperty]
+    private string _id = string.Empty;
+
+    [ObservableProperty]
+    private string _text = "Label";
+
+    [ObservableProperty]
+    private double _x;
+
+    [ObservableProperty]
+    private double _y;
+
+    [ObservableProperty]
+    private double _fontSize = 14;
+
+    [ObservableProperty]
+    private string _color = "#FFFFFF";
+
+    [ObservableProperty]
+    private bool _isSelected;
+
+    [ObservableProperty]
+    private bool _isBold;
 }

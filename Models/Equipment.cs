@@ -54,7 +54,13 @@ public partial class Equipment : ObservableObject
     
     [ObservableProperty]
     private double _height = 50;
-    
+
+    [ObservableProperty]
+    private AnchorPoint _gridAnchor = AnchorPoint.Center;
+
+    [ObservableProperty]
+    private AnchorPoint _connectionAnchor = AnchorPoint.Center;
+
     [ObservableProperty]
     private string _notes = string.Empty;
     
@@ -73,15 +79,18 @@ public partial class Equipment : ObservableObject
         {
             if (string.IsNullOrEmpty(NormalPosition) || NormalPosition == "unknown")
                 return EquipmentStatus.Unknown;
-            
+
+            if (string.IsNullOrEmpty(CurrentPosition))
+                return EquipmentStatus.Unknown;
+
             if (CurrentPosition.Equals(NormalPosition, StringComparison.OrdinalIgnoreCase))
                 return EquipmentStatus.Normal;
-            
+
             if (CurrentPosition.Equals("standby", StringComparison.OrdinalIgnoreCase) ||
                 CurrentPosition.Equals("bypass", StringComparison.OrdinalIgnoreCase) ||
                 CurrentPosition.Equals("test", StringComparison.OrdinalIgnoreCase))
                 return EquipmentStatus.Warning;
-            
+
             return EquipmentStatus.Abnormal;
         }
     }
@@ -96,7 +105,10 @@ public partial class Equipment : ObservableObject
         {
             // Only flash if not energized
             if (IsEnergized) return false;
-            
+
+            // Can't flash if we don't know the position
+            if (string.IsNullOrEmpty(CurrentPosition)) return false;
+
             // Check if equipment is in an "active" state that would need power
             var activeStates = new[] { "on", "closed", "energized", "available", "normal", "source 1", "source 2" };
             return activeStates.Any(s => CurrentPosition.Equals(s, StringComparison.OrdinalIgnoreCase));
@@ -166,11 +178,13 @@ public partial class Equipment : ObservableObject
     /// </summary>
     public bool CanConductElectricity()
     {
+        if (string.IsNullOrEmpty(CurrentPosition)) return false;
+
         return Type switch
         {
             EquipmentType.Breaker => CurrentPosition.Equals("closed", StringComparison.OrdinalIgnoreCase),
             EquipmentType.Switch => CurrentPosition.Equals("closed", StringComparison.OrdinalIgnoreCase),
-            EquipmentType.ATS => CurrentPosition.Equals("normal", StringComparison.OrdinalIgnoreCase) || 
+            EquipmentType.ATS => CurrentPosition.Equals("normal", StringComparison.OrdinalIgnoreCase) ||
                                  CurrentPosition.Equals("emergency", StringComparison.OrdinalIgnoreCase),
             EquipmentType.UPS => CurrentPosition.Equals("on", StringComparison.OrdinalIgnoreCase) ||
                                  CurrentPosition.Equals("bypass", StringComparison.OrdinalIgnoreCase),
@@ -187,14 +201,16 @@ public partial class Equipment : ObservableObject
     /// </summary>
     public bool IsPowerSource()
     {
-        return Type == EquipmentType.Generator && 
+        if (string.IsNullOrEmpty(CurrentPosition)) return false;
+
+        return Type == EquipmentType.Generator &&
                CurrentPosition.Equals("on", StringComparison.OrdinalIgnoreCase);
     }
 
     public static EquipmentType ParseType(string typeString)
     {
         var lower = typeString.ToLowerInvariant();
-        
+
         if (lower.Contains("valve")) return EquipmentType.Valve;
         if (lower.Contains("breaker")) return EquipmentType.Breaker;
         if (lower.Contains("pump")) return EquipmentType.Pump;
@@ -207,7 +223,38 @@ public partial class Equipment : ObservableObject
         if (lower.Contains("switch")) return EquipmentType.Switch;
         if (lower.Contains("pdu")) return EquipmentType.PDU;
         if (lower.Contains("sts")) return EquipmentType.STS;
-        
+
         return EquipmentType.Valve;
+    }
+
+    /// <summary>
+    /// Calculates the offset from the top-left corner to the specified anchor point
+    /// </summary>
+    public (double OffsetX, double OffsetY) GetAnchorOffset(AnchorPoint anchor)
+    {
+        double offsetX = anchor switch
+        {
+            AnchorPoint.TopLeft or AnchorPoint.MiddleLeft or AnchorPoint.BottomLeft => 0,
+            AnchorPoint.TopCenter or AnchorPoint.Center or AnchorPoint.BottomCenter => Width / 2,
+            _ => Width
+        };
+
+        double offsetY = anchor switch
+        {
+            AnchorPoint.TopLeft or AnchorPoint.TopCenter or AnchorPoint.TopRight => 0,
+            AnchorPoint.MiddleLeft or AnchorPoint.Center or AnchorPoint.MiddleRight => Height / 2,
+            _ => Height
+        };
+
+        return (offsetX, offsetY);
+    }
+
+    /// <summary>
+    /// Gets the absolute position of the specified anchor point
+    /// </summary>
+    public (double X, double Y) GetAnchorPosition(AnchorPoint anchor)
+    {
+        var (offsetX, offsetY) = GetAnchorOffset(anchor);
+        return (X + offsetX, Y + offsetY);
     }
 }
