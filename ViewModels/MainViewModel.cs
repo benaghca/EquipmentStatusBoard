@@ -29,9 +29,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private ObservableCollection<HistoryEntry> _history = new();
 
     [ObservableProperty]
-    private ObservableCollection<PipeConnection> _pipes = new();
-
-    [ObservableProperty]
     private ObservableCollection<Connection> _connections = new();
 
     [ObservableProperty]
@@ -39,6 +36,45 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private ObservableCollection<CanvasLabel> _labels = new();
+
+    [ObservableProperty]
+    private ObservableCollection<Layer> _layers = new() { Layer.CreateDefault() };
+
+    [ObservableProperty]
+    private Layer? _activeLayer;
+
+    // Filtered collections for layer visibility
+    public IEnumerable<Equipment> VisibleEquipment =>
+        EquipmentCollection.Where(e => IsLayerVisible(e.LayerId));
+
+    public IEnumerable<Connection> VisibleConnections =>
+        Connections.Where(c => IsLayerVisible(c.LayerId));
+
+    public IEnumerable<EquipmentGroup> VisibleGroups =>
+        Groups.Where(g => IsLayerVisible(g.LayerId));
+
+    public IEnumerable<CanvasLabel> VisibleLabels =>
+        Labels.Where(l => IsLayerVisible(l.LayerId));
+
+    private bool IsLayerVisible(string layerId)
+    {
+        var layer = Layers.FirstOrDefault(l => l.Id == layerId);
+        return layer?.IsVisible ?? true;
+    }
+
+    private bool IsLayerLocked(string layerId)
+    {
+        var layer = Layers.FirstOrDefault(l => l.Id == layerId);
+        return layer?.IsLocked ?? false;
+    }
+
+    private void NotifyVisibleCollectionsChanged()
+    {
+        OnPropertyChanged(nameof(VisibleEquipment));
+        OnPropertyChanged(nameof(VisibleConnections));
+        OnPropertyChanged(nameof(VisibleGroups));
+        OnPropertyChanged(nameof(VisibleLabels));
+    }
 
     [ObservableProperty]
     private CanvasLabel? _selectedLabel;
@@ -252,15 +288,37 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ProjectName = project.ProjectName;
         EquipmentCollection = new ObservableCollection<Equipment>(project.Equipment);
         History = new ObservableCollection<HistoryEntry>(project.History);
-        Pipes = new ObservableCollection<PipeConnection>(project.Pipes);
         Connections = new ObservableCollection<Connection>(project.Connections ?? new List<Connection>());
         Groups = new ObservableCollection<EquipmentGroup>(project.Groups ?? new List<EquipmentGroup>());
         Labels = new ObservableCollection<CanvasLabel>(project.Labels ?? new List<CanvasLabel>());
+
+        // Initialize layers - migrate old projects
+        if (project.Layers == null || project.Layers.Count == 0)
+        {
+            Layers = new ObservableCollection<Layer> { Layer.CreateDefault() };
+
+            // Ensure all existing items have default layer
+            foreach (var eq in EquipmentCollection)
+                if (string.IsNullOrEmpty(eq.LayerId)) eq.LayerId = "default";
+            foreach (var conn in Connections)
+                if (string.IsNullOrEmpty(conn.LayerId)) conn.LayerId = "default";
+            foreach (var group in Groups)
+                if (string.IsNullOrEmpty(group.LayerId)) group.LayerId = "default";
+            foreach (var label in Labels)
+                if (string.IsNullOrEmpty(label.LayerId)) label.LayerId = "default";
+        }
+        else
+        {
+            Layers = new ObservableCollection<Layer>(project.Layers);
+        }
+        ActiveLayer = Layers.FirstOrDefault();
+
         IsWelcomeVisible = false;
         _undoRedoService.Clear();
         ApplyFilter();
         UpdateStatusCounts();
         RecalculateElectricalStatus();
+        NotifyVisibleCollectionsChanged();
     }
 
     [RelayCommand]
@@ -269,14 +327,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ProjectName = "New Project";
         EquipmentCollection.Clear();
         History.Clear();
-        Pipes.Clear();
         Connections.Clear();
         Groups.Clear();
+        Labels.Clear();
+        Layers = new ObservableCollection<Layer> { Layer.CreateDefault() };
+        ActiveLayer = Layers.FirstOrDefault();
         IsWelcomeVisible = false;
         _undoRedoService.Clear();
         ClearSelection();
         ApplyFilter();
         UpdateStatusCounts();
+        NotifyVisibleCollectionsChanged();
     }
 
     [RelayCommand]
@@ -342,10 +403,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 ProjectName = ProjectName,
                 Equipment = EquipmentCollection.ToList(),
                 History = History.ToList(),
-                Pipes = Pipes.ToList(),
                 Connections = Connections.ToList(),
                 Groups = Groups.ToList(),
-                Labels = Labels.ToList()
+                Labels = Labels.ToList(),
+                Layers = Layers.ToList()
             };
             _projectService.SaveStatus(project, dialog.FileName);
             
@@ -623,6 +684,67 @@ public partial class MainViewModel : ObservableObject, IDisposable
         SaveAutoSave();
     }
 
+    [RelayCommand]
+    private void AddLayer()
+    {
+        var layer = new Layer
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = $"Layer {Layers.Count + 1}",
+            Order = Layers.Count,
+            IsVisible = true,
+            IsLocked = false
+        };
+        Layers.Add(layer);
+        ActiveLayer = layer;
+        NotifyVisibleCollectionsChanged();
+        SaveAutoSave();
+    }
+
+    [RelayCommand]
+    private void DeleteLayer(Layer layer)
+    {
+        if (layer.Id == "default") return; // Cannot delete default layer
+
+        // Move all items to default layer
+        foreach (var eq in EquipmentCollection.Where(e => e.LayerId == layer.Id))
+            eq.LayerId = "default";
+        foreach (var conn in Connections.Where(c => c.LayerId == layer.Id))
+            conn.LayerId = "default";
+        foreach (var group in Groups.Where(g => g.LayerId == layer.Id))
+            group.LayerId = "default";
+        foreach (var label in Labels.Where(l => l.LayerId == layer.Id))
+            label.LayerId = "default";
+
+        Layers.Remove(layer);
+        if (ActiveLayer == layer)
+            ActiveLayer = Layers.FirstOrDefault();
+
+        NotifyVisibleCollectionsChanged();
+        SaveAutoSave();
+    }
+
+    [RelayCommand]
+    private void ToggleLayerVisibility(Layer layer)
+    {
+        layer.IsVisible = !layer.IsVisible;
+        NotifyVisibleCollectionsChanged();
+        SaveAutoSave();
+    }
+
+    [RelayCommand]
+    private void ToggleLayerLock(Layer layer)
+    {
+        layer.IsLocked = !layer.IsLocked;
+        SaveAutoSave();
+    }
+
+    [RelayCommand]
+    private void SetActiveLayer(Layer layer)
+    {
+        ActiveLayer = layer;
+    }
+
     public void AddEquipmentAtPosition(EquipmentType type, double x, double y)
     {
         // Custom sizes per equipment type
@@ -660,10 +782,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
             X = topLeftX,
             Y = topLeftY,
             Width = width,
-            Height = height
+            Height = height,
+            LayerId = ActiveLayer?.Id ?? "default"
         };
 
         EquipmentCollection.Add(equipment);
+        NotifyVisibleCollectionsChanged();
 
         // Record undo action
         _undoRedoService.Record(new GenericAction(
@@ -694,10 +818,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
             X = x,
             Y = y,
             FontSize = 14,
-            Color = "#FFFFFF"
+            Color = "#FFFFFF",
+            LayerId = ActiveLayer?.Id ?? "default"
         };
 
         Labels.Add(label);
+        NotifyVisibleCollectionsChanged();
         SelectedLabel = label;
 
         _undoRedoService.Record(new GenericAction(
@@ -1063,11 +1189,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
             TargetEquipmentId = target.Id,
             Type = type,
             SourceAnchor = _pendingSourceAnchor,
-            TargetAnchor = _pendingTargetAnchor
+            TargetAnchor = _pendingTargetAnchor,
+            LayerId = ActiveLayer?.Id ?? "default"
         };
 
         UpdateConnectionPosition(connection);
         Connections.Add(connection);
+        NotifyVisibleCollectionsChanged();
 
         _undoRedoService.Record(new GenericAction(
             () => Connections.Remove(connection),
@@ -1255,10 +1383,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
             Y = minY - 30,
             Width = maxX - minX + 20,
             Height = maxY - minY + 40,
-            EquipmentIds = _selectedEquipmentItems.Select(e => e.Id).ToList()
+            EquipmentIds = _selectedEquipmentItems.Select(e => e.Id).ToList(),
+            LayerId = ActiveLayer?.Id ?? "default"
         };
 
         Groups.Add(group);
+        NotifyVisibleCollectionsChanged();
 
         _undoRedoService.Record(new GenericAction(
             () => Groups.Remove(group),
@@ -1535,11 +1665,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
             ProjectName = ProjectName,
             Equipment = EquipmentCollection.ToList(),
             History = History.ToList(),
-            Pipes = Pipes.ToList(),
             Connections = Connections.ToList(),
             Groups = Groups.ToList(),
-            Labels = Labels.ToList()
+            Labels = Labels.ToList(),
+            Layers = Layers.ToList()
         };
         _projectService.AutoSave(project);
     }
+
+    public void TriggerAutoSave() => SaveAutoSave();
 }

@@ -75,6 +75,9 @@ public partial class Equipment : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
+    [ObservableProperty]
+    private string _layerId = "default";
+
     public EquipmentStatus Status
     {
         get

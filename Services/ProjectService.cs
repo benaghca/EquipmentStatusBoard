@@ -89,16 +89,7 @@ public class ProjectService
                 Height = h
             });
         }
-        
-        project.Pipes.AddRange(new[]
-        {
-            new PipeConnection { X1 = 125, Y1 = 225, X2 = 300, Y2 = 225 },
-            new PipeConnection { X1 = 325, Y1 = 225, X2 = 500, Y2 = 225 },
-            new PipeConnection { X1 = 330, Y1 = 150, X2 = 330, Y2 = 200 },
-            new PipeConnection { X1 = 230, Y1 = 320, X2 = 230, Y2 = 225 },
-            new PipeConnection { X1 = 430, Y1 = 320, X2 = 430, Y2 = 225 },
-        });
-        
+
         // Simulate some abnormal conditions
         var abnormalIds = new[] { "chw-v-003", "chw-p-002", "msb-003" };
         foreach (var eq in project.Equipment.Where(e => abnormalIds.Contains(e.Id)))

@@ -36,6 +36,8 @@
         <conv:HalfValueConverter x:Key="HalfValueConverter"/>
         <conv:HalfMinusOffsetConverter x:Key="HalfMinusOffsetConverter"/>
         <conv:SubtractConverter x:Key="SubtractConverter"/>
+        <conv:BoolToEyeIconConverter x:Key="BoolToEyeIconConverter"/>
+        <conv:BoolToLockIconConverter x:Key="BoolToLockIconConverter"/>
 
         <!-- ComboBox Style for dark theme -->
         <Style x:Key="DarkComboBoxStyle" TargetType="ComboBox">
@@ -736,6 +738,97 @@
                                         </StackPanel>
                                     </Expander>
 
+                                    <!-- Layers Group -->
+                                    <Expander Header="LAYERS" Style="{StaticResource ToolGroupExpanderStyle}" IsExpanded="True">
+                                        <StackPanel>
+                                            <!-- Add Layer Button -->
+                                            <Button Style="{StaticResource CanvasToolButtonStyle}"
+                                                    Command="{Binding AddLayerCommand}"
+                                                    ToolTip="Add new layer">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="+" Width="24" FontWeight="Bold"/>
+                                                    <TextBlock Text="Add Layer"/>
+                                                </StackPanel>
+                                            </Button>
+
+                                            <!-- Layer List -->
+                                            <ItemsControl ItemsSource="{Binding Layers}" Margin="0,4,0,0">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Margin="0,2" Padding="4" CornerRadius="4"
+                                                                Background="{StaticResource BgTertiaryBrush}"
+                                                                BorderThickness="1">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="BorderBrush" Value="Transparent"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Value="True">
+                                                                            <DataTrigger.Binding>
+                                                                                <MultiBinding Converter="{StaticResource StringEqualityConverter}">
+                                                                                    <Binding Path="Id"/>
+                                                                                    <Binding Path="DataContext.ActiveLayer.Id" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                                                </MultiBinding>
+                                                                            </DataTrigger.Binding>
+                                                                            <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                </Grid.ColumnDefinitions>
+
+                                                                <!-- Visibility Toggle -->
+                                                                <Button Grid.Column="0"
+                                                                        Command="{Binding DataContext.ToggleLayerVisibilityCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"
+                                                                        Style="{StaticResource CanvasToolButtonStyle}"
+                                                                        Padding="4,2" Margin="0,0,2,0" ToolTip="Toggle visibility">
+                                                                    <TextBlock Text="{Binding IsVisible, Converter={StaticResource BoolToEyeIconConverter}}" FontSize="12"/>
+                                                                </Button>
+
+                                                                <!-- Lock Toggle -->
+                                                                <Button Grid.Column="1"
+                                                                        Command="{Binding DataContext.ToggleLayerLockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"
+                                                                        Style="{StaticResource CanvasToolButtonStyle}"
+                                                                        Padding="4,2" Margin="0,0,4,0" ToolTip="Toggle lock">
+                                                                    <TextBlock Text="{Binding IsLocked, Converter={StaticResource BoolToLockIconConverter}}" FontSize="12"/>
+                                                                </Button>
+
+                                                                <!-- Layer Name (editable, click to set active) -->
+                                                                <TextBox Grid.Column="2"
+                                                                         Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                                                         Background="Transparent"
+                                                                         BorderThickness="0"
+                                                                         Foreground="{StaticResource TextPrimaryBrush}"
+                                                                         FontSize="12"
+                                                                         VerticalAlignment="Center"
+                                                                         Padding="2,0"
+                                                                         GotFocus="LayerName_GotFocus"
+                                                                         LostFocus="LayerName_LostFocus">
+                                                                    <TextBox.Style>
+                                                                        <Style TargetType="TextBox">
+                                                                            <Setter Property="CaretBrush" Value="{StaticResource TextPrimaryBrush}"/>
+                                                                            <Style.Triggers>
+                                                                                <Trigger Property="IsFocused" Value="True">
+                                                                                    <Setter Property="Background" Value="{StaticResource BgElevatedBrush}"/>
+                                                                                </Trigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBox.Style>
+                                                                </TextBox>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Expander>
+
                                 </StackPanel>
                             </ScrollViewer>
 
@@ -792,7 +885,7 @@
                             Background="Transparent"/>
                     
                     <!-- Groups Overlay (behind equipment) -->
-                    <ItemsControl x:Name="GroupsOverlay" ItemsSource="{Binding Groups}" IsHitTestVisible="True">
+                    <ItemsControl x:Name="GroupsOverlay" ItemsSource="{Binding VisibleGroups}" IsHitTestVisible="True">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <Canvas/>
@@ -929,7 +1022,7 @@
                     </ItemsControl>
                     
                     <!-- Connections Overlay -->
-                    <ItemsControl x:Name="ConnectionsOverlay" ItemsSource="{Binding Connections}" IsHitTestVisible="True">
+                    <ItemsControl x:Name="ConnectionsOverlay" ItemsSource="{Binding VisibleConnections}" IsHitTestVisible="True">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <Canvas/>
@@ -987,31 +1080,9 @@
                             </TransformGroup>
                         </ItemsControl.RenderTransform>
                     </ItemsControl>
-                    
-                    <!-- Pipes Overlay (legacy) -->
-                    <ItemsControl ItemsSource="{Binding Pipes}" IsHitTestVisible="False">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <Canvas/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Line X1="{Binding X1}" Y1="{Binding Y1}" 
-                                      X2="{Binding X2}" Y2="{Binding Y2}"
-                                      Stroke="#FF0066CC" StrokeThickness="5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                        <ItemsControl.RenderTransform>
-                            <TransformGroup>
-                                <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}"/>
-                                <TranslateTransform X="{Binding PanX}" Y="{Binding PanY}"/>
-                            </TransformGroup>
-                        </ItemsControl.RenderTransform>
-                    </ItemsControl>
-                    
+
                     <!-- Equipment Overlay -->
-                    <ItemsControl x:Name="EquipmentOverlay" ItemsSource="{Binding EquipmentCollection}"
+                    <ItemsControl x:Name="EquipmentOverlay" ItemsSource="{Binding VisibleEquipment}"
                                   IsHitTestVisible="True">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -1218,7 +1289,7 @@
                     </ItemsControl>
 
                     <!-- Labels Overlay -->
-                    <ItemsControl x:Name="LabelsOverlay" ItemsSource="{Binding Labels}">
+                    <ItemsControl x:Name="LabelsOverlay" ItemsSource="{Binding VisibleLabels}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <Canvas/>

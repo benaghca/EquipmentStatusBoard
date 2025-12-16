@@ -7,19 +7,11 @@ public class ProjectData
     public string ProjectName { get; set; } = "Untitled Project";
     public List<Equipment> Equipment { get; set; } = new();
     public List<HistoryEntry> History { get; set; } = new();
-    public List<PipeConnection> Pipes { get; set; } = new();
     public List<Connection> Connections { get; set; } = new();
     public List<EquipmentGroup> Groups { get; set; } = new();
     public List<CanvasLabel> Labels { get; set; } = new();
+    public List<Layer> Layers { get; set; } = new();
     public DateTime? LastSaved { get; set; }
-}
-
-public class PipeConnection
-{
-    public double X1 { get; set; }
-    public double Y1 { get; set; }
-    public double X2 { get; set; }
-    public double Y2 { get; set; }
 }
 
 public enum ConnectionType
@@ -78,6 +70,9 @@ public partial class Connection : ObservableObject
     [ObservableProperty]
     private string _pathData = "";
 
+    [ObservableProperty]
+    private string _layerId = "default";
+
     public string StrokeColor => Type == ConnectionType.Electrical 
         ? (IsEnergized ? "#FFFFD700" : "#FF666666")
         : "#FF0066CC";
@@ -126,6 +121,9 @@ public partial class EquipmentGroup : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
+    [ObservableProperty]
+    private string _layerId = "default";
+
     public List<string> EquipmentIds { get; set; } = new();
 
     public string BorderColor => IsSelected ? "#FF3B82F6" : "#FF4A5568";
@@ -164,4 +162,7 @@ public partial class CanvasLabel : ObservableObject
 
     [ObservableProperty]
     private bool _isBold;
+
+    [ObservableProperty]
+    private string _layerId = "default";
 }

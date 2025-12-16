@@ -16,6 +16,8 @@ public partial class MainWindow : Window
 {
     private bool _isPanning;
     private bool _isMiddleMousePanning;
+    private bool _isSpacePanning;
+    private bool _isSpacePressed;
     private bool _isDraggingEquipment;
     private bool _isBoxSelecting;
     private bool _isDraggingGroup;
@@ -55,12 +57,92 @@ public partial class MainWindow : Window
         this.MouseMove += Window_MouseMove;
         this.MouseLeftButtonUp += Window_MouseLeftButtonUp;
 
+        // Add keyboard handlers for space+drag panning (Preview to intercept before buttons)
+        this.PreviewKeyDown += Window_PreviewKeyDown;
+        this.PreviewKeyUp += Window_PreviewKeyUp;
+
+        // Add window-level mouse handler for space+drag panning (intercepts before other handlers)
+        this.PreviewMouseLeftButtonDown += Window_PreviewMouseLeftButtonDown;
+        this.PreviewMouseMove += Window_PreviewMouseMove;
+        this.PreviewMouseLeftButtonUp += Window_PreviewMouseLeftButtonUp;
+
         // Set initial viewport size after layout
         Loaded += (s, e) =>
         {
             ViewModel.ViewportWidth = DiagramCanvas.ActualWidth;
             ViewModel.ViewportHeight = DiagramCanvas.ActualHeight;
         };
+    }
+
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Space && !_isSpacePressed)
+        {
+            _isSpacePressed = true;
+            // Change cursor to hand to indicate pan mode
+            Mouse.OverrideCursor = Cursors.Hand;
+            // Prevent space from activating focused buttons
+            e.Handled = true;
+        }
+    }
+
+    private void Window_PreviewKeyUp(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Space)
+        {
+            _isSpacePressed = false;
+            _isSpacePanning = false;
+            // Reset cursor back to default
+            Mouse.OverrideCursor = null;
+            // Prevent space from activating focused buttons
+            e.Handled = true;
+        }
+    }
+
+    private void Window_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_isSpacePressed)
+        {
+            _isSpacePanning = true;
+            _lastMousePosition = e.GetPosition(this);
+            e.Handled = true;
+        }
+    }
+
+    private void Window_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        // Safety: if space was released but cursor is still overridden, reset it
+        if (!_isSpacePressed && Mouse.OverrideCursor == Cursors.Hand)
+        {
+            Mouse.OverrideCursor = null;
+            _isSpacePanning = false;
+        }
+
+        if (_isSpacePanning && e.LeftButton == MouseButtonState.Pressed)
+        {
+            var currentPosition = e.GetPosition(this);
+            var delta = currentPosition - _lastMousePosition;
+
+            ViewModel.PanX += delta.X;
+            ViewModel.PanY += delta.Y;
+
+            _lastMousePosition = currentPosition;
+            e.Handled = true;
+        }
+    }
+
+    private void Window_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_isSpacePanning)
+        {
+            _isSpacePanning = false;
+            // Reset cursor if space is no longer pressed
+            if (!_isSpacePressed)
+            {
+                Mouse.OverrideCursor = null;
+            }
+            e.Handled = true;
+        }
     }
 
     private void DiagramCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -727,6 +809,20 @@ public partial class MainWindow : Window
         e.Handled = _isResizingGroup || _isDraggingGroup;
     }
 
+    private void LayerName_GotFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox textBox && textBox.DataContext is Layer layer)
+        {
+            ViewModel.SetActiveLayerCommand.Execute(layer);
+        }
+    }
+
+    private void LayerName_LostFocus(object sender, RoutedEventArgs e)
+    {
+        // Trigger auto-save when layer name editing is complete
+        ViewModel.TriggerAutoSave();
+    }
+
     private void Label_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is FrameworkElement element && element.DataContext is CanvasLabel label)
@@ -744,8 +840,18 @@ public partial class MainWindow : Window
 
     private void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        // Space + left click = pan (priority over everything else)
+        if (_isSpacePressed)
+        {
+            _isSpacePanning = true;
+            _lastMousePosition = e.GetPosition(this);
+            DiagramCanvas.CaptureMouse();
+            e.Handled = true;
+            return;
+        }
+
         var source = e.OriginalSource as FrameworkElement;
-        
+
         // Check if clicking on empty canvas area
         if (source == DiagramCanvas || source?.Name == "DiagramCanvas")
         {
@@ -815,6 +921,15 @@ public partial class MainWindow : Window
             DiagramCanvas.CaptureMouse();
             e.Handled = true;
         }
+
+        // Space + left click panning
+        if (_isSpacePressed && e.LeftButton == MouseButtonState.Pressed)
+        {
+            _isSpacePanning = true;
+            _lastMousePosition = e.GetPosition(this);
+            DiagramCanvas.CaptureMouse();
+            e.Handled = true;
+        }
     }
 
     private void Canvas_MouseUp(object sender, MouseButtonEventArgs e)
@@ -822,6 +937,14 @@ public partial class MainWindow : Window
         if (e.MiddleButton == MouseButtonState.Released && _isMiddleMousePanning)
         {
             _isMiddleMousePanning = false;
+            DiagramCanvas.ReleaseMouseCapture();
+            e.Handled = true;
+        }
+
+        // Space panning release
+        if (e.LeftButton == MouseButtonState.Released && _isSpacePanning)
+        {
+            _isSpacePanning = false;
             DiagramCanvas.ReleaseMouseCapture();
             e.Handled = true;
         }
@@ -834,10 +957,23 @@ public partial class MainWindow : Window
         {
             var currentPosition = e.GetPosition(this);
             var delta = currentPosition - _lastMousePosition;
-            
+
             ViewModel.PanX += delta.X;
             ViewModel.PanY += delta.Y;
-            
+
+            _lastMousePosition = currentPosition;
+            return;
+        }
+
+        // Space + drag panning
+        if (_isSpacePanning && e.LeftButton == MouseButtonState.Pressed)
+        {
+            var currentPosition = e.GetPosition(this);
+            var delta = currentPosition - _lastMousePosition;
+
+            ViewModel.PanX += delta.X;
+            ViewModel.PanY += delta.Y;
+
             _lastMousePosition = currentPosition;
             return;
         }
