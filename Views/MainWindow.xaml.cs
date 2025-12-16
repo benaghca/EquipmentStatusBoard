@@ -111,11 +111,13 @@ public partial class MainWindow : Window
 
     private void Window_PreviewMouseMove(object sender, MouseEventArgs e)
     {
-        // Safety: if space was released but cursor is still overridden, reset it
-        if (!_isSpacePressed && Mouse.OverrideCursor == Cursors.Hand)
+        // Safety: check actual keyboard state and sync our flag
+        bool spaceActuallyPressed = Keyboard.IsKeyDown(Key.Space);
+        if (!spaceActuallyPressed && (_isSpacePressed || Mouse.OverrideCursor == Cursors.Hand))
         {
-            Mouse.OverrideCursor = null;
+            _isSpacePressed = false;
             _isSpacePanning = false;
+            Mouse.OverrideCursor = null;
         }
 
         if (_isSpacePanning && e.LeftButton == MouseButtonState.Pressed)
