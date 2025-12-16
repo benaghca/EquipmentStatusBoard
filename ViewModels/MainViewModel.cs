@@ -542,6 +542,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    private void SetLOTO(bool isLOTO)
+    {
+        if (SelectedEquipment == null) return;
+
+        SelectedEquipment.IsLOTO = isLOTO;
+        SelectedEquipment.LastUpdated = DateTime.Now;
+        SaveAutoSave();
+    }
+
+    [RelayCommand]
     private void SetFilter(string filter)
     {
         CurrentFilter = filter;
@@ -624,6 +634,31 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (dialog.ShowDialog() == true)
         {
             _projectService.ExportHistory(History.ToList(), dialog.FileName);
+        }
+    }
+
+    [RelayCommand]
+    private void ExportEquipmentCsv()
+    {
+        if (EquipmentCollection.Count == 0)
+        {
+            System.Windows.MessageBox.Show("No equipment to export.", "Export Equipment",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            Filter = "CSV Files (*.csv)|*.csv|All Files (*.*)|*.*",
+            Title = "Export Equipment Status",
+            FileName = $"{ProjectName}-equipment.csv"
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            _projectService.ExportEquipmentCsv(EquipmentCollection.ToList(), Layers.ToList(), dialog.FileName);
+            System.Windows.MessageBox.Show($"Equipment exported to:\n{dialog.FileName}", "Export Complete",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         }
     }
 

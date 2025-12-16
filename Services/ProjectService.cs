@@ -43,14 +43,33 @@ public class ProjectService
     public void ExportHistory(List<HistoryEntry> history, string filePath)
     {
         var lines = new List<string> { "Timestamp,Equipment,From,To" };
-        
-        lines.AddRange(history.Select(h => 
+
+        lines.AddRange(history.Select(h =>
             $"\"{h.Timestamp:yyyy-MM-dd HH:mm:ss}\",\"{h.EquipmentName}\",\"{h.FromPosition}\",\"{h.ToPosition}\""
         ));
-        
+
         File.WriteAllLines(filePath, lines);
     }
-    
+
+    public void ExportEquipmentCsv(List<Equipment> equipment, List<Layer> layers, string filePath)
+    {
+        var header = "Name,Type,Status,Current Position,Normal Position,Energized,LOTO,Layer,Notes,Last Updated";
+        var lines = new List<string> { header };
+
+        foreach (var eq in equipment)
+        {
+            var layerName = layers.FirstOrDefault(l => l.Id == eq.LayerId)?.Name ?? "Default";
+            var notes = (eq.Notes ?? "").Replace("\"", "\"\"").Replace("\n", " ").Replace("\r", "");
+            var lastUpdated = eq.LastUpdated?.ToString("yyyy-MM-dd HH:mm:ss") ?? "";
+
+            lines.Add($"\"{eq.Name}\",\"{eq.Type}\",\"{eq.Status}\",\"{eq.CurrentPosition}\"," +
+                      $"\"{eq.NormalPosition}\",\"{(eq.IsEnergized ? "Yes" : "No")}\"," +
+                      $"\"{(eq.IsLOTO ? "Yes" : "No")}\",\"{layerName}\",\"{notes}\",\"{lastUpdated}\"");
+        }
+
+        File.WriteAllLines(filePath, lines);
+    }
+
     public static ProjectData CreateDemoProject()
     {
         var project = new ProjectData

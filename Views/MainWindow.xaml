@@ -6,6 +6,7 @@
         xmlns:vm="clr-namespace:EquipmentStatusTracker.WPF.ViewModels"
         xmlns:conv="clr-namespace:EquipmentStatusTracker.WPF.Converters"
         xmlns:controls="clr-namespace:EquipmentStatusTracker.WPF.Controls"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         mc:Ignorable="d"
         Title="Equipment Status Tracker" 
         Height="900" Width="1600"
@@ -19,6 +20,8 @@
     </Window.DataContext>
     
     <Window.Resources>
+        <sys:Boolean x:Key="True">True</sys:Boolean>
+        <sys:Boolean x:Key="False">False</sys:Boolean>
         <conv:StatusToColorConverter x:Key="StatusToColorConverter"/>
         <conv:StatusToBackgroundConverter x:Key="StatusToBackgroundConverter"/>
         <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
@@ -499,6 +502,15 @@
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="📷" Margin="0,0,6,0"/>
                                     <TextBlock Text="Export"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource SecondaryButtonStyle}"
+                                    Padding="8,6" Margin="4,0,0,0"
+                                    Command="{Binding ExportEquipmentCsvCommand}"
+                                    ToolTip="Export Equipment to CSV">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="📋" Margin="0,0,6,0"/>
+                                    <TextBlock Text="CSV"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -1178,7 +1190,18 @@
                                                 </Style>
                                             </Border.Style>
                                         </Border>
-                                        
+
+                                        <!-- LOTO Badge -->
+                                        <Border CornerRadius="3" Background="#FFF84949" Padding="4,2"
+                                                HorizontalAlignment="Left" VerticalAlignment="Top"
+                                                Margin="-4,-8,0,0"
+                                                Visibility="{Binding IsLOTO, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <Border.Effect>
+                                                <DropShadowEffect Color="Black" BlurRadius="4" Opacity="0.5" ShadowDepth="1"/>
+                                            </Border.Effect>
+                                            <TextBlock Text="LOTO" FontSize="8" FontWeight="Bold" Foreground="White"/>
+                                        </Border>
+
                                         <!-- 9-Point Anchor System (visible when connection tool selected) -->
                                         <Canvas Visibility="{Binding DataContext.SelectedConnectionTool, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource NullToVisibilityConverter}}">
                                             <!-- Top Row: Y=0, centered on point -->
@@ -1524,6 +1547,65 @@
                                     </TextBlock.Style>
                                 </TextBlock>
                             </Grid>
+                            <Border Height="1" Background="{StaticResource BorderMutedBrush}" Margin="0,0,0,8"/>
+
+                            <!-- LOTO Status -->
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="LOTO" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource MonoFont}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Clear"/>
+                                            <Setter Property="Foreground" Value="{StaticResource StatusNormalBrush}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedEquipment.IsLOTO}" Value="True">
+                                                    <Setter Property="Text" Value="ACTIVE"/>
+                                                    <Setter Property="Foreground" Value="{StaticResource StatusAbnormalBrush}"/>
+                                                    <Setter Property="FontWeight" Value="Bold"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+
+                            <!-- LOTO Toggle Buttons (Edit mode only) -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8"
+                                        Visibility="{Binding IsEditMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Button Command="{Binding SetLOTOCommand}" CommandParameter="{StaticResource True}"
+                                        Margin="0,0,6,0">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                            <Setter Property="Padding" Value="12,8"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedEquipment.IsLOTO}" Value="True">
+                                                    <Setter Property="Background" Value="{StaticResource StatusAbnormalBrush}"/>
+                                                    <Setter Property="BorderBrush" Value="{StaticResource StatusAbnormalBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🔒 LOCK OUT"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding SetLOTOCommand}" CommandParameter="{StaticResource False}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                            <Setter Property="Padding" Value="12,8"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedEquipment.IsLOTO}" Value="False">
+                                                    <Setter Property="Background" Value="{StaticResource StatusNormalBrush}"/>
+                                                    <Setter Property="BorderBrush" Value="{StaticResource StatusNormalBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🔓 CLEAR"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
                             <Border Height="1" Background="{StaticResource BorderMutedBrush}" Margin="0,0,0,24"/>
                             
                             <!-- Set Current Position Section -->
