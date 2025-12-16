@@ -26,17 +26,17 @@ public class ProjectService
     public void AutoSave(ProjectData project)
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        var saveDir = Path.Combine(appData, "EquipmentStatusTracker");
+        var saveDir = Path.Combine(appData, "Adjutant");
         Directory.CreateDirectory(saveDir);
-        
+
         var savePath = Path.Combine(saveDir, AutoSaveFileName);
         SaveStatus(project, savePath);
     }
-    
+
     public ProjectData? LoadAutoSave()
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        var savePath = Path.Combine(appData, "EquipmentStatusTracker", AutoSaveFileName);
+        var savePath = Path.Combine(appData, "Adjutant", AutoSaveFileName);
         return LoadStatus(savePath);
     }
     

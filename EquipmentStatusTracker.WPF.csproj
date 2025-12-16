@@ -6,6 +6,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <AssemblyName>Adjutant</AssemblyName>
+    <Product>Adjutant</Product>
+    <AssemblyTitle>Adjutant</AssemblyTitle>
+    <Description>Equipment Status Tracking and Diagram Tool</Description>
   </PropertyGroup>
 
   <ItemGroup>

@@ -8,7 +8,7 @@
         xmlns:controls="clr-namespace:EquipmentStatusTracker.WPF.Controls"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
         mc:Ignorable="d"
-        Title="Equipment Status Tracker" 
+        Title="Adjutant" 
         Height="900" Width="1600"
         MinHeight="600" MinWidth="1000"
         WindowStartupLocation="CenterScreen"
@@ -1433,10 +1433,14 @@
                                        FontSize="18" FontWeight="SemiBold"
                                        Foreground="{StaticResource TextPrimaryBrush}"
                                        Visibility="{Binding SelectedGroup, Converter={StaticResource NullToVisibilityConverter}}"/>
-                            <TextBlock Text="{Binding SelectedEquipment.Name}" 
+                            <TextBlock Text="{Binding SelectedEquipment.Name}"
                                        FontSize="18" FontWeight="SemiBold"
                                        Foreground="{StaticResource TextPrimaryBrush}"
                                        Visibility="{Binding SelectedEquipment, Converter={StaticResource NullToVisibilityConverter}}"/>
+                            <TextBlock Text="Label"
+                                       FontSize="18" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Visibility="{Binding SelectedLabel, Converter={StaticResource NullToVisibilityConverter}}"/>
                             <Button Content="✕" Style="{StaticResource SecondaryButtonStyle}" 
                                     HorizontalAlignment="Right" Padding="8,4"
                                     Command="{Binding CloseDetailPanelCommand}"/>
@@ -1771,6 +1775,127 @@
                                      Text="{Binding SelectedEquipment.Notes, UpdateSourceTrigger=PropertyChanged}"
                                      MinHeight="100" TextWrapping="Wrap" AcceptsReturn="True"
                                      VerticalContentAlignment="Top"/>
+                            </StackPanel>
+
+                            <!-- Label Details -->
+                            <StackPanel Margin="20" Visibility="{Binding SelectedLabel, Converter={StaticResource NullToVisibilityConverter}}">
+                                <TextBlock Text="LABEL TEXT" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,12"/>
+                                <TextBox Text="{Binding SelectedLabel.Text, UpdateSourceTrigger=PropertyChanged}"
+                                         Background="{StaticResource BgTertiaryBrush}"
+                                         Foreground="{StaticResource TextPrimaryBrush}"
+                                         BorderBrush="{StaticResource BorderMutedBrush}"
+                                         BorderThickness="1"
+                                         Padding="8,6"
+                                         MinHeight="60" TextWrapping="Wrap" AcceptsReturn="True"
+                                         VerticalContentAlignment="Top"
+                                         Margin="0,0,0,24"/>
+
+                                <TextBlock Text="STYLE" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,12"/>
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Font Size" Foreground="{StaticResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center" Grid.Column="0"/>
+                                    <ComboBox Grid.Column="1" Width="80"
+                                              SelectedValue="{Binding SelectedLabel.FontSize, Mode=TwoWay}"
+                                              SelectedValuePath="Content"
+                                              Style="{StaticResource DarkComboBoxStyle}">
+                                        <ComboBoxItem Content="10"/>
+                                        <ComboBoxItem Content="12"/>
+                                        <ComboBoxItem Content="14"/>
+                                        <ComboBoxItem Content="16"/>
+                                        <ComboBoxItem Content="18"/>
+                                        <ComboBoxItem Content="20"/>
+                                        <ComboBoxItem Content="24"/>
+                                        <ComboBoxItem Content="28"/>
+                                        <ComboBoxItem Content="32"/>
+                                    </ComboBox>
+                                </Grid>
+                                <Border Height="1" Background="{StaticResource BorderMutedBrush}" Margin="0,0,0,8"/>
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Color" Foreground="{StaticResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center" Grid.Column="0"/>
+                                    <ComboBox Grid.Column="1" Width="120"
+                                              SelectedValue="{Binding SelectedLabel.Color, Mode=TwoWay}"
+                                              SelectedValuePath="Tag"
+                                              Style="{StaticResource DarkComboBoxStyle}">
+                                        <ComboBoxItem Tag="#FFFFFF">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="14" Height="14" Background="#FFFFFF" CornerRadius="2" Margin="0,0,8,0"/>
+                                                <TextBlock Text="White"/>
+                                            </StackPanel>
+                                        </ComboBoxItem>
+                                        <ComboBoxItem Tag="#FFD700">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="14" Height="14" Background="#FFD700" CornerRadius="2" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Yellow"/>
+                                            </StackPanel>
+                                        </ComboBoxItem>
+                                        <ComboBoxItem Tag="#FF6B6B">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="14" Height="14" Background="#FF6B6B" CornerRadius="2" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Red"/>
+                                            </StackPanel>
+                                        </ComboBoxItem>
+                                        <ComboBoxItem Tag="#4CAF50">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="14" Height="14" Background="#4CAF50" CornerRadius="2" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Green"/>
+                                            </StackPanel>
+                                        </ComboBoxItem>
+                                        <ComboBoxItem Tag="#3B82F6">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="14" Height="14" Background="#3B82F6" CornerRadius="2" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Blue"/>
+                                            </StackPanel>
+                                        </ComboBoxItem>
+                                        <ComboBoxItem Tag="#A78BFA">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="14" Height="14" Background="#A78BFA" CornerRadius="2" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Purple"/>
+                                            </StackPanel>
+                                        </ComboBoxItem>
+                                        <ComboBoxItem Tag="#F97316">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="14" Height="14" Background="#F97316" CornerRadius="2" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Orange"/>
+                                            </StackPanel>
+                                        </ComboBoxItem>
+                                    </ComboBox>
+                                </Grid>
+                                <Border Height="1" Background="{StaticResource BorderMutedBrush}" Margin="0,0,0,8"/>
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Bold" Foreground="{StaticResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center" Grid.Column="0"/>
+                                    <CheckBox Grid.Column="1" IsChecked="{Binding SelectedLabel.IsBold, Mode=TwoWay}"/>
+                                </Grid>
+                                <Border Height="1" Background="{StaticResource BorderMutedBrush}" Margin="0,0,0,24"/>
+
+                                <!-- Delete Label Button -->
+                                <Button Command="{Binding DeleteSelectedLabelCommand}"
+                                        Style="{StaticResource SecondaryButtonStyle}"
+                                        Padding="12,8"
+                                        HorizontalAlignment="Left"
+                                        Visibility="{Binding IsEditMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Delete Label" Foreground="{StaticResource StatusAbnormalBrush}"/>
+                                    </StackPanel>
+                                </Button>
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>

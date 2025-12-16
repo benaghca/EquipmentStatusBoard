@@ -55,6 +55,12 @@ public partial class MainWindow : Window
     private double _equipmentResizeStartX;
     private double _equipmentResizeStartY;
 
+    // Label drag state
+    private bool _isDraggingLabel;
+    private CanvasLabel? _draggedLabel;
+    private double _labelDragStartX;
+    private double _labelDragStartY;
+
     private MainViewModel ViewModel => (MainViewModel)DataContext;
 
     public MainWindow()

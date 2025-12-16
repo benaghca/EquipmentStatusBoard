@@ -124,6 +124,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private double _panY = 50;
 
+    // Mouse position in canvas coordinates (for paste at cursor)
+    public double MouseCanvasX { get; set; }
+    public double MouseCanvasY { get; set; }
+
     // Edit mode properties
     [ObservableProperty]
     private bool _isEditMode;
@@ -238,6 +242,24 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (value != null)
         {
             SelectedEquipment = null;
+            SelectedLabel = null;
+            IsHistoryPanelOpen = false;
+            IsDetailPanelOpen = true;
+        }
+    }
+
+    partial void OnSelectedLabelChanged(CanvasLabel? value)
+    {
+        foreach (var label in Labels)
+        {
+            label.IsSelected = label == value;
+        }
+
+        // Open detail panel when label is selected
+        if (value != null)
+        {
+            SelectedEquipment = null;
+            SelectedGroup = null;
             IsHistoryPanelOpen = false;
             IsDetailPanelOpen = true;
         }
@@ -442,8 +464,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         SelectedEquipment = equipment;
         if (equipment != null)
         {
-            // Clear group selection when selecting equipment
+            // Clear group and label selection when selecting equipment
             SelectedGroup = null;
+            SelectedLabel = null;
             IsHistoryPanelOpen = false;
             IsDetailPanelOpen = true;
         }
@@ -885,6 +908,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ));
 
         SelectedLabel = null;
+        NotifyVisibleCollectionsChanged();
         SaveAutoSave();
     }
 
@@ -1018,6 +1042,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         _undoRedoService.Record(compound);
         ClearSelection();
+        NotifyVisibleCollectionsChanged();
         ApplyFilter();
         UpdateStatusCounts();
         RecalculateElectricalStatus();
@@ -1108,12 +1133,20 @@ public partial class MainViewModel : ObservableObject, IDisposable
             .ToList();
     }
 
-    public void PasteSelection(double offsetX = 50, double offsetY = 50)
+    public void PasteSelection()
     {
         if (_clipboardEquipment.Count == 0) return;
 
         ClearSelection();
         var idMap = new Dictionary<string, string>();
+
+        // Calculate the center of the clipboard items to offset from mouse position
+        double clipboardCenterX = _clipboardEquipment.Average(e => e.X + e.Width / 2);
+        double clipboardCenterY = _clipboardEquipment.Average(e => e.Y + e.Height / 2);
+
+        // Offset to place items centered on mouse position
+        double offsetX = MouseCanvasX - clipboardCenterX;
+        double offsetY = MouseCanvasY - clipboardCenterY;
 
         var compound = new CompoundAction("Paste");
 
@@ -1133,7 +1166,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 Y = original.Y + offsetY,
                 Width = original.Width,
                 Height = original.Height,
-                Notes = original.Notes
+                Notes = original.Notes,
+                LayerId = ActiveLayer?.Id ?? "default"
             };
 
             EquipmentCollection.Add(newEquipment);
@@ -1176,6 +1210,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
 
         _undoRedoService.Record(compound);
+        NotifyVisibleCollectionsChanged();
         ApplyFilter();
         UpdateStatusCounts();
         RecalculateElectricalStatus();
@@ -1264,6 +1299,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ));
 
         SelectedConnection = null;
+        NotifyVisibleCollectionsChanged();
         RecalculateElectricalStatus();
         SaveAutoSave();
     }
@@ -1448,6 +1484,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ));
 
         SelectedGroup = null;
+        NotifyVisibleCollectionsChanged();
         SaveAutoSave();
     }
 

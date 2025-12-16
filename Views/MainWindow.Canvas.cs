@@ -76,11 +76,11 @@ public partial class MainWindow
             }
 
             // Handle selection with modifiers
-            if (Keyboard.Modifiers == ModifierKeys.Shift)
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
             {
                 ViewModel.AddToSelection(equipment);
             }
-            else if (Keyboard.Modifiers == ModifierKeys.Control)
+            else if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
             {
                 ViewModel.ToggleSelection(equipment);
             }
@@ -280,6 +280,18 @@ public partial class MainWindow
             }
             ViewModel.SelectedLabel = label;
             ViewModel.ClearSelection();
+
+            // Start dragging in edit mode
+            if (ViewModel.IsEditMode)
+            {
+                _isDraggingLabel = true;
+                _draggedLabel = label;
+                _labelDragStartX = label.X;
+                _labelDragStartY = label.Y;
+                _dragStartPosition = e.GetPosition(LabelsOverlay);
+                this.CaptureMouse();
+            }
+
             e.Handled = true;
         }
     }
@@ -329,7 +341,7 @@ public partial class MainWindow
                 // Start box selection if select tool is active
                 if (ViewModel.SelectedTool == "Select" || string.IsNullOrEmpty(ViewModel.SelectedTool))
                 {
-                    if (Keyboard.Modifiers != ModifierKeys.Shift && Keyboard.Modifiers != ModifierKeys.Control)
+                    if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && !Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
                     {
                         ViewModel.ClearSelection();
                     }
@@ -398,6 +410,11 @@ public partial class MainWindow
 
     private void Canvas_MouseMove(object sender, MouseEventArgs e)
     {
+        // Track mouse position in canvas coordinates for paste-at-cursor
+        var screenPos = e.GetPosition(DiagramCanvas);
+        ViewModel.MouseCanvasX = (screenPos.X - ViewModel.PanX) / ViewModel.ZoomLevel;
+        ViewModel.MouseCanvasY = (screenPos.Y - ViewModel.PanY) / ViewModel.ZoomLevel;
+
         // Middle mouse panning
         if (_isMiddleMousePanning && e.MiddleButton == MouseButtonState.Pressed)
         {

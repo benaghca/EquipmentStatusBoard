@@ -127,6 +127,29 @@ public partial class MainWindow
                     this.ReleaseMouseCapture();
                 }
             }
+            if (_isDraggingLabel)
+            {
+                _isDraggingLabel = false;
+                _draggedLabel = null;
+                ViewModel.TriggerAutoSave();
+                if (this.IsMouseCaptured)
+                {
+                    this.ReleaseMouseCapture();
+                }
+            }
+            return;
+        }
+
+        // Handle label dragging
+        if (_isDraggingLabel && _draggedLabel != null)
+        {
+            var currentPos = e.GetPosition(LabelsOverlay);
+            var deltaX = currentPos.X - _dragStartPosition.X;
+            var deltaY = currentPos.Y - _dragStartPosition.Y;
+
+            _draggedLabel.X = _labelDragStartX + deltaX;
+            _draggedLabel.Y = _labelDragStartY + deltaY;
+            e.Handled = true;
             return;
         }
 
@@ -311,6 +334,20 @@ public partial class MainWindow
 
     private void Window_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        // Handle label dragging end
+        if (_isDraggingLabel)
+        {
+            _isDraggingLabel = false;
+            _draggedLabel = null;
+            ViewModel.TriggerAutoSave();
+            if (this.IsMouseCaptured)
+            {
+                this.ReleaseMouseCapture();
+            }
+            e.Handled = true;
+            return;
+        }
+
         // Handle equipment resizing end
         if (_isResizingEquipment)
         {
