@@ -4,7 +4,7 @@ using EquipmentStatusTracker.WPF.Models;
 
 namespace EquipmentStatusTracker.WPF.Services;
 
-public class ProjectService
+public class ProjectService : IProjectService
 {
     private const string AutoSaveFileName = "autosave.json";
     
@@ -70,7 +70,7 @@ public class ProjectService
         File.WriteAllLines(filePath, lines);
     }
 
-    public static ProjectData CreateDemoProject()
+    public ProjectData CreateDemoProject()
     {
         var project = new ProjectData
         {

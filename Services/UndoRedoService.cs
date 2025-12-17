@@ -60,7 +60,7 @@ public class CompoundAction : IUndoRedoAction
     public bool HasActions => _actions.Count > 0;
 }
 
-public class UndoRedoService
+public class UndoRedoService : IUndoRedoService
 {
     private readonly Stack<IUndoRedoAction> _undoStack = new();
     private readonly Stack<IUndoRedoAction> _redoStack = new();

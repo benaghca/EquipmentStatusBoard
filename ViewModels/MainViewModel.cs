@@ -16,6 +16,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly EventHandler? _undoRedoStateChangedHandler;
     private bool _disposed;
 
+    // Composed ViewModels for better separation of concerns
+    public CanvasViewModel Canvas { get; } = new();
+    public SelectionViewModel Selection { get; } = new();
+    public ToolViewModel Tool { get; } = new();
+
     [ObservableProperty]
     private string _projectName = "Untitled Project";
 
@@ -394,7 +399,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void LoadDemo()
     {
-        var project = ProjectService.CreateDemoProject();
+        var project = _projectService.CreateDemoProject();
         LoadProject(project);
         SaveAutoSave();
     }
