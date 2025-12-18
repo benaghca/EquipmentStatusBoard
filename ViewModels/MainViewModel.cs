@@ -11,8 +11,8 @@ namespace EquipmentStatusTracker.WPF.ViewModels;
 
 public partial class MainViewModel : ObservableObject, IDisposable
 {
-    private readonly ProjectService _projectService = new();
-    private readonly UndoRedoService _undoRedoService = new();
+    private readonly IProjectService _projectService;
+    private readonly IUndoRedoService _undoRedoService;
     private readonly EventHandler? _undoRedoStateChangedHandler;
     private bool _disposed;
 
@@ -89,7 +89,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     
     partial void OnSelectedEquipmentChanged(Equipment? value)
     {
-        // Visual selection state is based on _selectedEquipmentItems list, not SelectedEquipment
+        // Visual selection state is based on Selection.SelectedItems list, not SelectedEquipment
         // SelectedEquipment just determines which item shows in the detail panel
         // Don't modify IsSelected here - it's managed by AddToSelection/ClearSelection/etc.
     }
@@ -126,23 +126,19 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public AnchorPoint[] AnchorPointOptions { get; } = Enum.GetValues<AnchorPoint>();
 
     // Selection
-    private List<Equipment> _selectedEquipmentItems = new();
-    private List<Equipment> _clipboardEquipment = new();
-    private List<Connection> _clipboardConnections = new();
-
-    // Move tracking for undo
-    private Dictionary<string, (double X, double Y)> _moveStartPositions = new();
-
     public int NormalCount => EquipmentCollection.Count(e => e.Status == EquipmentStatus.Normal);
     public int AbnormalCount => EquipmentCollection.Count(e => e.Status == EquipmentStatus.Abnormal);
     public int WarningCount => EquipmentCollection.Count(e => e.Status == EquipmentStatus.Warning || e.Status == EquipmentStatus.Unknown);
-    public int SelectedCount => _selectedEquipmentItems.Count;
+    public int SelectedCount => Selection.SelectedCount;
 
     public bool CanUndo => _undoRedoService.CanUndo;
     public bool CanRedo => _undoRedoService.CanRedo;
 
-    public MainViewModel()
+    public MainViewModel(IProjectService projectService, IUndoRedoService undoRedoService)
     {
+        _projectService = projectService;
+        _undoRedoService = undoRedoService;
+
         _undoRedoStateChangedHandler = (s, e) =>
         {
             OnPropertyChanged(nameof(CanUndo));
@@ -808,20 +804,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public void BeginMoveEquipment(IEnumerable<Equipment> equipment)
     {
-        _moveStartPositions.Clear();
-        foreach (var eq in equipment)
-        {
-            _moveStartPositions[eq.Id] = (eq.X, eq.Y);
-        }
+        Selection.BeginMove(equipment);
     }
 
     public (double X, double Y)? GetOriginalPosition(string equipmentId)
     {
-        if (_moveStartPositions.TryGetValue(equipmentId, out var pos))
-        {
-            return pos;
-        }
-        return null;
+        return Selection.GetOriginalPosition(equipmentId);
     }
 
     public void MoveEquipment(Equipment equipment, double newX, double newY, bool saveAfter = true)
@@ -851,12 +839,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void EndMoveEquipment(IEnumerable<Equipment> equipment)
     {
         var movedEquipment = equipment.ToList();
-        var startPositions = new Dictionary<string, (double X, double Y)>(_moveStartPositions);
+        var startPositions = Selection.GetMoveStartPositions();
         var endPositions = movedEquipment.ToDictionary(e => e.Id, e => (e.X, e.Y));
 
         // Check if anything actually moved
-        bool hasMoved = movedEquipment.Any(e => 
-            startPositions.TryGetValue(e.Id, out var start) && 
+        bool hasMoved = movedEquipment.Any(e =>
+            startPositions.TryGetValue(e.Id, out var start) &&
             (Math.Abs(start.X - e.X) > 0.1 || Math.Abs(start.Y - e.Y) > 0.1));
 
         if (hasMoved)
@@ -890,7 +878,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             ));
         }
 
-        _moveStartPositions.Clear();
+        Selection.EndMove();
         SaveAutoSave();
     }
 
@@ -904,9 +892,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public void DeleteSelectedEquipment()
     {
-        if (_selectedEquipmentItems.Count == 0) return;
+        if (Selection.SelectedItems.Count == 0) return;
 
-        var toDelete = _selectedEquipmentItems.ToList();
+        var toDelete = Selection.SelectedItems.ToList();
         var deletedConnections = Connections.Where(c => 
             toDelete.Any(e => e.Id == c.SourceEquipmentId || e.Id == c.TargetEquipmentId)).ToList();
 
@@ -943,15 +931,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
         SaveAutoSave();
     }
 
-    // Selection methods
+    // Selection methods - delegate to SelectionViewModel
     public void ClearSelection()
     {
-        // Clear all equipment selection to prevent stuck selections
-        foreach (var eq in EquipmentCollection)
-        {
-            eq.IsSelected = false;
-        }
-        _selectedEquipmentItems.Clear();
+        Selection.ClearEquipmentSelection(EquipmentCollection);
         SelectedConnection = null;
         SelectedGroup = null;
         OnPropertyChanged(nameof(SelectedCount));
@@ -959,84 +942,51 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public void AddToSelection(Equipment equipment)
     {
-        if (!_selectedEquipmentItems.Contains(equipment))
-        {
-            _selectedEquipmentItems.Add(equipment);
-            equipment.IsSelected = true;
-            OnPropertyChanged(nameof(SelectedCount));
-        }
+        Selection.AddToSelection(equipment);
+        OnPropertyChanged(nameof(SelectedCount));
     }
 
     public void ToggleSelection(Equipment equipment)
     {
-        if (_selectedEquipmentItems.Contains(equipment))
-        {
-            _selectedEquipmentItems.Remove(equipment);
-            equipment.IsSelected = false;
-        }
-        else
-        {
-            _selectedEquipmentItems.Add(equipment);
-            equipment.IsSelected = true;
-        }
+        Selection.ToggleSelection(equipment);
         OnPropertyChanged(nameof(SelectedCount));
     }
 
     public void SetSelection(Equipment equipment)
     {
-        ClearSelection();
-        AddToSelection(equipment);
+        Selection.SetSelection(equipment, EquipmentCollection);
+        OnPropertyChanged(nameof(SelectedCount));
     }
 
     public void SelectAll()
     {
-        ClearSelection();
-        foreach (var eq in EquipmentCollection)
-        {
-            AddToSelection(eq);
-        }
+        Selection.SelectAll(EquipmentCollection);
+        OnPropertyChanged(nameof(SelectedCount));
     }
 
     public void SelectInRect(double x1, double y1, double x2, double y2)
     {
-        var minX = Math.Min(x1, x2);
-        var maxX = Math.Max(x1, x2);
-        var minY = Math.Min(y1, y2);
-        var maxY = Math.Max(y1, y2);
-
-        foreach (var eq in EquipmentCollection)
-        {
-            var eqCenterX = eq.X + eq.Width / 2;
-            var eqCenterY = eq.Y + eq.Height / 2;
-
-            if (eqCenterX >= minX && eqCenterX <= maxX && eqCenterY >= minY && eqCenterY <= maxY)
-            {
-                AddToSelection(eq);
-            }
-        }
+        Selection.SelectInRect(x1, y1, x2, y2, EquipmentCollection);
+        OnPropertyChanged(nameof(SelectedCount));
     }
 
-    public IReadOnlyList<Equipment> GetSelectedEquipment() => _selectedEquipmentItems.AsReadOnly();
+    public IReadOnlyList<Equipment> GetSelectedEquipment() => Selection.SelectedItems;
 
     public void CopySelection()
     {
-        _clipboardEquipment = _selectedEquipmentItems.ToList();
-        _clipboardConnections = Connections
-            .Where(c => _clipboardEquipment.Any(e => e.Id == c.SourceEquipmentId) &&
-                       _clipboardEquipment.Any(e => e.Id == c.TargetEquipmentId))
-            .ToList();
+        Selection.CopySelection(Connections);
     }
 
     public void PasteSelection()
     {
-        if (_clipboardEquipment.Count == 0) return;
+        if (!Selection.HasClipboard) return;
 
         ClearSelection();
         var idMap = new Dictionary<string, string>();
 
         // Calculate the center of the clipboard items to offset from mouse position
-        double clipboardCenterX = _clipboardEquipment.Average(e => e.X + e.Width / 2);
-        double clipboardCenterY = _clipboardEquipment.Average(e => e.Y + e.Height / 2);
+        double clipboardCenterX = Selection.ClipboardEquipment.Average(e => e.X + e.Width / 2);
+        double clipboardCenterY = Selection.ClipboardEquipment.Average(e => e.Y + e.Height / 2);
 
         // Offset to place items centered on mouse position
         double offsetX = MouseCanvasX - clipboardCenterX;
@@ -1044,7 +994,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         var compound = new CompoundAction("Paste");
 
-        foreach (var original in _clipboardEquipment)
+        foreach (var original in Selection.ClipboardEquipment)
         {
             var newId = Guid.NewGuid().ToString();
             idMap[original.Id] = newId;
@@ -1076,7 +1026,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
 
         // Recreate connections between pasted items
-        foreach (var original in _clipboardConnections)
+        foreach (var original in Selection.ClipboardConnections)
         {
             if (idMap.TryGetValue(original.SourceEquipmentId, out var newSourceId) &&
                 idMap.TryGetValue(original.TargetEquipmentId, out var newTargetId))
@@ -1329,12 +1279,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void CreateGroup()
     {
-        if (_selectedEquipmentItems.Count < 2) return;
+        if (Selection.SelectedItems.Count < 2) return;
 
-        var minX = _selectedEquipmentItems.Min(e => e.X);
-        var minY = _selectedEquipmentItems.Min(e => e.Y);
-        var maxX = _selectedEquipmentItems.Max(e => e.X + e.Width);
-        var maxY = _selectedEquipmentItems.Max(e => e.Y + e.Height);
+        var minX = Selection.SelectedItems.Min(e => e.X);
+        var minY = Selection.SelectedItems.Min(e => e.Y);
+        var maxX = Selection.SelectedItems.Max(e => e.X + e.Width);
+        var maxY = Selection.SelectedItems.Max(e => e.Y + e.Height);
 
         var group = new EquipmentGroup
         {
@@ -1345,7 +1295,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             Y = minY - 30,
             Width = maxX - minX + 20,
             Height = maxY - minY + 40,
-            EquipmentIds = _selectedEquipmentItems.Select(e => e.Id).ToList(),
+            EquipmentIds = Selection.SelectedItems.Select(e => e.Id).ToList(),
             LayerId = ActiveLayer?.Id ?? "default"
         };
 

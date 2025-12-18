@@ -14,11 +14,7 @@
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BgPrimaryBrush}"
         KeyDown="MainWindow_KeyDown">
-    
-    <Window.DataContext>
-        <vm:MainViewModel/>
-    </Window.DataContext>
-    
+
     <Window.Resources>
         <sys:Boolean x:Key="True">True</sys:Boolean>
         <sys:Boolean x:Key="False">False</sys:Boolean>

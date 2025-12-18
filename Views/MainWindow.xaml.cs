@@ -63,8 +63,9 @@ public partial class MainWindow : Window
 
     private MainViewModel ViewModel => (MainViewModel)DataContext;
 
-    public MainWindow()
+    public MainWindow(MainViewModel viewModel)
     {
+        DataContext = viewModel;
         InitializeComponent();
 
         // Add window-level mouse handlers for reliable drag tracking
