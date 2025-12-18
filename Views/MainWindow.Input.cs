@@ -62,8 +62,8 @@ public partial class MainWindow
             var currentPosition = e.GetPosition(this);
             var delta = currentPosition - _lastMousePosition;
 
-            ViewModel.PanX += delta.X;
-            ViewModel.PanY += delta.Y;
+            ViewModel.Canvas.PanX += delta.X;
+            ViewModel.Canvas.PanY += delta.Y;
 
             _lastMousePosition = currentPosition;
             e.Handled = true;
@@ -289,8 +289,8 @@ public partial class MainWindow
                 var screenDelta = currentPos - _dragStartPosition;
 
                 // Convert screen delta to canvas delta
-                var canvasDeltaX = screenDelta.X / ViewModel.ZoomLevel;
-                var canvasDeltaY = screenDelta.Y / ViewModel.ZoomLevel;
+                var canvasDeltaX = screenDelta.X / ViewModel.Canvas.ZoomLevel;
+                var canvasDeltaY = screenDelta.Y / ViewModel.Canvas.ZoomLevel;
 
                 var selectedEquipment = ViewModel.GetSelectedEquipment();
                 foreach (var eq in selectedEquipment)
@@ -417,10 +417,10 @@ public partial class MainWindow
             var rectRight = rectLeft + SelectionRectangle.Width;
             var rectBottom = rectTop + SelectionRectangle.Height;
 
-            var canvasLeft = (rectLeft - ViewModel.PanX) / ViewModel.ZoomLevel;
-            var canvasTop = (rectTop - ViewModel.PanY) / ViewModel.ZoomLevel;
-            var canvasRight = (rectRight - ViewModel.PanX) / ViewModel.ZoomLevel;
-            var canvasBottom = (rectBottom - ViewModel.PanY) / ViewModel.ZoomLevel;
+            var canvasLeft = (rectLeft - ViewModel.Canvas.PanX) / ViewModel.Canvas.ZoomLevel;
+            var canvasTop = (rectTop - ViewModel.Canvas.PanY) / ViewModel.Canvas.ZoomLevel;
+            var canvasRight = (rectRight - ViewModel.Canvas.PanX) / ViewModel.Canvas.ZoomLevel;
+            var canvasBottom = (rectBottom - ViewModel.Canvas.PanY) / ViewModel.Canvas.ZoomLevel;
 
             ViewModel.SelectInRect(canvasLeft, canvasTop, canvasRight, canvasBottom);
         }
@@ -431,9 +431,9 @@ public partial class MainWindow
         if (e.Key == Key.Escape)
         {
             // Cancel connection first
-            if (!string.IsNullOrEmpty(ViewModel.SelectedConnectionTool) && ViewModel.ConnectionSource != null)
+            if (!string.IsNullOrEmpty(ViewModel.Tool.SelectedConnectionTool) && ViewModel.Tool.ConnectionSource != null)
             {
-                ViewModel.CancelConnection();
+                ViewModel.Tool.CancelConnection();
                 e.Handled = true;
                 return;
             }
@@ -463,16 +463,16 @@ public partial class MainWindow
             }
 
             // Deselect tools
-            if (!string.IsNullOrEmpty(ViewModel.SelectedConnectionTool))
+            if (!string.IsNullOrEmpty(ViewModel.Tool.SelectedConnectionTool))
             {
-                ViewModel.SelectedConnectionTool = "";
+                ViewModel.Tool.SelectedConnectionTool = "";
                 e.Handled = true;
                 return;
             }
 
-            if (ViewModel.SelectedTool != "Select")
+            if (ViewModel.Tool.SelectedTool != "Select")
             {
-                ViewModel.SelectedTool = "Select";
+                ViewModel.Tool.SelectedTool = "Select";
                 e.Handled = true;
                 return;
             }
@@ -484,35 +484,35 @@ public partial class MainWindow
             switch (e.Key)
             {
                 case Key.C:
-                    if (ViewModel.IsEditMode)
+                    if (ViewModel.Tool.IsEditMode)
                     {
                         ViewModel.CopySelection();
                         e.Handled = true;
                     }
                     break;
                 case Key.V:
-                    if (ViewModel.IsEditMode)
+                    if (ViewModel.Tool.IsEditMode)
                     {
                         ViewModel.PasteSelection();
                         e.Handled = true;
                     }
                     break;
                 case Key.A:
-                    if (ViewModel.IsEditMode)
+                    if (ViewModel.Tool.IsEditMode)
                     {
                         ViewModel.SelectAll();
                         e.Handled = true;
                     }
                     break;
                 case Key.Z:
-                    if (ViewModel.IsEditMode)
+                    if (ViewModel.Tool.IsEditMode)
                     {
                         ViewModel.UndoCommand.Execute(null);
                         e.Handled = true;
                     }
                     break;
                 case Key.Y:
-                    if (ViewModel.IsEditMode)
+                    if (ViewModel.Tool.IsEditMode)
                     {
                         ViewModel.RedoCommand.Execute(null);
                         e.Handled = true;
@@ -524,7 +524,7 @@ public partial class MainWindow
         if (e.Key == Key.Delete)
         {
             // Only allow deletion in edit mode
-            if (!ViewModel.IsEditMode) return;
+            if (!ViewModel.Tool.IsEditMode) return;
 
             // Prioritize equipment deletion if any is selected
             if (ViewModel.SelectedCount > 0)

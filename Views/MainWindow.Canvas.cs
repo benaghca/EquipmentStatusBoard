@@ -17,8 +17,8 @@ public partial class MainWindow
 {
     private void DiagramCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        ViewModel.ViewportWidth = e.NewSize.Width;
-        ViewModel.ViewportHeight = e.NewSize.Height;
+        ViewModel.Canvas.ViewportWidth = e.NewSize.Width;
+        ViewModel.Canvas.ViewportHeight = e.NewSize.Height;
     }
 
     private void EquipmentItem_Click(object sender, MouseButtonEventArgs e)
@@ -56,9 +56,9 @@ public partial class MainWindow
         var equipmentCenterX = equipment.X + equipment.Width / 2;
         var equipmentCenterY = equipment.Y + equipment.Height / 2;
 
-        ViewModel.ZoomLevel = 1.5;
-        ViewModel.PanX = (canvasWidth / 2) - (equipmentCenterX * ViewModel.ZoomLevel);
-        ViewModel.PanY = (canvasHeight / 2) - (equipmentCenterY * ViewModel.ZoomLevel);
+        ViewModel.Canvas.ZoomLevel = 1.5;
+        ViewModel.Canvas.PanX = (canvasWidth / 2) - (equipmentCenterX * ViewModel.Canvas.ZoomLevel);
+        ViewModel.Canvas.PanY = (canvasHeight / 2) - (equipmentCenterY * ViewModel.Canvas.ZoomLevel);
     }
 
     private void Equipment_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -66,7 +66,7 @@ public partial class MainWindow
         if (sender is FrameworkElement element && element.DataContext is Equipment equipment)
         {
             // Handle connection tool
-            if (!string.IsNullOrEmpty(ViewModel.SelectedConnectionTool))
+            if (!string.IsNullOrEmpty(ViewModel.Tool.SelectedConnectionTool))
             {
                 if (ViewModel.TryHandleConnectionClick(equipment))
                 {
@@ -93,7 +93,7 @@ public partial class MainWindow
             ViewModel.SelectEquipmentCommand.Execute(equipment);
 
             // Start dragging in edit mode (when not using a connection tool)
-            if (ViewModel.IsEditMode && string.IsNullOrEmpty(ViewModel.SelectedConnectionTool))
+            if (ViewModel.Tool.IsEditMode && string.IsNullOrEmpty(ViewModel.Tool.SelectedConnectionTool))
             {
                 _isDraggingEquipment = true;
                 _draggedEquipment = equipment;
@@ -135,7 +135,7 @@ public partial class MainWindow
 
             if (parent?.DataContext is Equipment equipment)
             {
-                if (ViewModel.ConnectionSource == null)
+                if (ViewModel.Tool.ConnectionSource == null)
                 {
                     ViewModel.SetPendingSourceAnchor(anchor);
                 }
@@ -184,7 +184,7 @@ public partial class MainWindow
             ViewModel.ClearSelection();
             ViewModel.SelectedGroup = group;
 
-            if (ViewModel.IsEditMode && string.IsNullOrEmpty(ViewModel.SelectedConnectionTool))
+            if (ViewModel.Tool.IsEditMode && string.IsNullOrEmpty(ViewModel.Tool.SelectedConnectionTool))
             {
                 // Store initial position but don't start dragging yet - wait for mouse movement
                 _dragStartPosition = e.GetPosition(GroupsOverlay);
@@ -203,7 +203,7 @@ public partial class MainWindow
             ViewModel.ClearSelection();
             ViewModel.SelectedGroup = group;
 
-            if (ViewModel.IsEditMode)
+            if (ViewModel.Tool.IsEditMode)
             {
                 _isResizingGroup = true;
                 _resizingGroup = group;
@@ -226,7 +226,7 @@ public partial class MainWindow
         {
             ViewModel.SetSelection(equipment);
 
-            if (ViewModel.IsEditMode)
+            if (ViewModel.Tool.IsEditMode)
             {
                 _isResizingEquipment = true;
                 _resizingEquipment = equipment;
@@ -282,7 +282,7 @@ public partial class MainWindow
             ViewModel.ClearSelection();
 
             // Start dragging in edit mode
-            if (ViewModel.IsEditMode)
+            if (ViewModel.Tool.IsEditMode)
             {
                 _isDraggingLabel = true;
                 _draggedLabel = label;
@@ -314,15 +314,15 @@ public partial class MainWindow
         if (source == DiagramCanvas || source?.Name == "DiagramCanvas")
         {
             // In edit mode, check if we should add equipment or start box select
-            if (ViewModel.IsEditMode)
+            if (ViewModel.Tool.IsEditMode)
             {
                 // Check if an equipment type tool is selected
-                if (!string.IsNullOrEmpty(ViewModel.SelectedTool) && ViewModel.SelectedTool != "Select")
+                if (!string.IsNullOrEmpty(ViewModel.Tool.SelectedTool) && ViewModel.Tool.SelectedTool != "Select")
                 {
                     var pos = e.GetPosition(EquipmentOverlay);
 
                     // Handle Label tool
-                    if (ViewModel.SelectedTool == "Label")
+                    if (ViewModel.Tool.SelectedTool == "Label")
                     {
                         ViewModel.AddLabelAtPosition(pos.X, pos.Y);
                         e.Handled = true;
@@ -330,7 +330,7 @@ public partial class MainWindow
                     }
 
                     // Add equipment at click position
-                    if (Enum.TryParse<EquipmentType>(ViewModel.SelectedTool, out var equipmentType))
+                    if (Enum.TryParse<EquipmentType>(ViewModel.Tool.SelectedTool, out var equipmentType))
                     {
                         ViewModel.AddEquipmentAtPosition(equipmentType, pos.X, pos.Y);
                     }
@@ -339,7 +339,7 @@ public partial class MainWindow
                 }
 
                 // Start box selection if select tool is active
-                if (ViewModel.SelectedTool == "Select" || string.IsNullOrEmpty(ViewModel.SelectedTool))
+                if (ViewModel.Tool.SelectedTool == "Select" || string.IsNullOrEmpty(ViewModel.Tool.SelectedTool))
                 {
                     if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && !Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
                     {
@@ -412,8 +412,8 @@ public partial class MainWindow
     {
         // Track mouse position in canvas coordinates for paste-at-cursor
         var screenPos = e.GetPosition(DiagramCanvas);
-        ViewModel.MouseCanvasX = (screenPos.X - ViewModel.PanX) / ViewModel.ZoomLevel;
-        ViewModel.MouseCanvasY = (screenPos.Y - ViewModel.PanY) / ViewModel.ZoomLevel;
+        ViewModel.MouseCanvasX = (screenPos.X - ViewModel.Canvas.PanX) / ViewModel.Canvas.ZoomLevel;
+        ViewModel.MouseCanvasY = (screenPos.Y - ViewModel.Canvas.PanY) / ViewModel.Canvas.ZoomLevel;
 
         // Middle mouse panning
         if (_isMiddleMousePanning && e.MiddleButton == MouseButtonState.Pressed)
@@ -421,8 +421,8 @@ public partial class MainWindow
             var currentPosition = e.GetPosition(this);
             var delta = currentPosition - _lastMousePosition;
 
-            ViewModel.PanX += delta.X;
-            ViewModel.PanY += delta.Y;
+            ViewModel.Canvas.PanX += delta.X;
+            ViewModel.Canvas.PanY += delta.Y;
 
             _lastMousePosition = currentPosition;
             return;
@@ -434,8 +434,8 @@ public partial class MainWindow
             var currentPosition = e.GetPosition(this);
             var delta = currentPosition - _lastMousePosition;
 
-            ViewModel.PanX += delta.X;
-            ViewModel.PanY += delta.Y;
+            ViewModel.Canvas.PanX += delta.X;
+            ViewModel.Canvas.PanY += delta.Y;
 
             _lastMousePosition = currentPosition;
             return;
@@ -447,8 +447,8 @@ public partial class MainWindow
             var currentPosition = e.GetPosition(this);
             var delta = currentPosition - _lastMousePosition;
 
-            ViewModel.PanX += delta.X;
-            ViewModel.PanY += delta.Y;
+            ViewModel.Canvas.PanX += delta.X;
+            ViewModel.Canvas.PanY += delta.Y;
 
             _lastMousePosition = currentPosition;
             return;
@@ -492,10 +492,10 @@ public partial class MainWindow
             var rectBottom = rectTop + SelectionRectangle.Height;
 
             // Transform screen coordinates to canvas coordinates
-            var canvasLeft = (rectLeft - ViewModel.PanX) / ViewModel.ZoomLevel;
-            var canvasTop = (rectTop - ViewModel.PanY) / ViewModel.ZoomLevel;
-            var canvasRight = (rectRight - ViewModel.PanX) / ViewModel.ZoomLevel;
-            var canvasBottom = (rectBottom - ViewModel.PanY) / ViewModel.ZoomLevel;
+            var canvasLeft = (rectLeft - ViewModel.Canvas.PanX) / ViewModel.Canvas.ZoomLevel;
+            var canvasTop = (rectTop - ViewModel.Canvas.PanY) / ViewModel.Canvas.ZoomLevel;
+            var canvasRight = (rectRight - ViewModel.Canvas.PanX) / ViewModel.Canvas.ZoomLevel;
+            var canvasBottom = (rectBottom - ViewModel.Canvas.PanY) / ViewModel.Canvas.ZoomLevel;
 
             ViewModel.SelectInRect(canvasLeft, canvasTop, canvasRight, canvasBottom);
         }
@@ -504,8 +504,8 @@ public partial class MainWindow
     private void Canvas_MouseWheel(object sender, MouseWheelEventArgs e)
     {
         var delta = e.Delta > 0 ? 0.1 : -0.1;
-        var newZoom = Math.Clamp(ViewModel.ZoomLevel + delta, 0.25, 3.0);
-        ViewModel.ZoomLevel = newZoom;
+        var newZoom = Math.Clamp(ViewModel.Canvas.ZoomLevel + delta, 0.25, 3.0);
+        ViewModel.Canvas.ZoomLevel = newZoom;
     }
 
     private void ExportToImage_Click(object sender, RoutedEventArgs e)
@@ -558,14 +558,14 @@ public partial class MainWindow
             double contentHeight = maxY - minY;
 
             // Store current transform values
-            double originalPanX = ViewModel.PanX;
-            double originalPanY = ViewModel.PanY;
-            double originalZoom = ViewModel.ZoomLevel;
+            double originalPanX = ViewModel.Canvas.PanX;
+            double originalPanY = ViewModel.Canvas.PanY;
+            double originalZoom = ViewModel.Canvas.ZoomLevel;
 
             // Set zoom to 1 and pan to show content from (0,0) at top-left
-            ViewModel.ZoomLevel = 1.0;
-            ViewModel.PanX = -minX;
-            ViewModel.PanY = -minY;
+            ViewModel.Canvas.ZoomLevel = 1.0;
+            ViewModel.Canvas.PanX = -minX;
+            ViewModel.Canvas.PanY = -minY;
 
             // Force layout update
             Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
@@ -604,7 +604,7 @@ public partial class MainWindow
                 // Draw grid pattern
                 var gridPen = new Pen(new SolidColorBrush(Color.FromArgb(48, 96, 108, 128)), 1);
                 gridPen.Freeze();
-                int gridSize = ViewModel.GridSize;
+                int gridSize = ViewModel.Canvas.GridSize;
                 double scaledGridSize = gridSize * scale;
                 for (double x = 0; x < pixelWidth; x += scaledGridSize)
                 {
@@ -640,9 +640,9 @@ public partial class MainWindow
             }
 
             // Restore original transform
-            ViewModel.PanX = originalPanX;
-            ViewModel.PanY = originalPanY;
-            ViewModel.ZoomLevel = originalZoom;
+            ViewModel.Canvas.PanX = originalPanX;
+            ViewModel.Canvas.PanY = originalPanY;
+            ViewModel.Canvas.ZoomLevel = originalZoom;
 
             var renderBitmap = new RenderTargetBitmap(
                 pixelWidth, pixelHeight, 96, 96, PixelFormats.Pbgra32);

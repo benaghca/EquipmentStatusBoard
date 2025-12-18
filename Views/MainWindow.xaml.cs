@@ -83,8 +83,8 @@ public partial class MainWindow : Window
         // Set initial viewport size after layout
         Loaded += (s, e) =>
         {
-            ViewModel.ViewportWidth = DiagramCanvas.ActualWidth;
-            ViewModel.ViewportHeight = DiagramCanvas.ActualHeight;
+            ViewModel.Canvas.ViewportWidth = DiagramCanvas.ActualWidth;
+            ViewModel.Canvas.ViewportHeight = DiagramCanvas.ActualHeight;
         };
     }
 }

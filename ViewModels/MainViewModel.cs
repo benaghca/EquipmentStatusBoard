@@ -89,11 +89,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     
     partial void OnSelectedEquipmentChanged(Equipment? value)
     {
-        // Ensure visual selection state matches SelectedEquipment
-        foreach (var eq in EquipmentCollection)
-        {
-            eq.IsSelected = eq == value && _selectedEquipmentItems.Contains(eq);
-        }
+        // Visual selection state is based on _selectedEquipmentItems list, not SelectedEquipment
+        // SelectedEquipment just determines which item shows in the detail panel
+        // Don't modify IsSelected here - it's managed by AddToSelection/ClearSelection/etc.
     }
 
     [ObservableProperty]
@@ -120,52 +118,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _currentFilter = "all";
 
-    [ObservableProperty]
-    private double _zoomLevel = 1.0;
-
-    [ObservableProperty]
-    private double _panX = 50;
-
-    [ObservableProperty]
-    private double _panY = 50;
 
     // Mouse position in canvas coordinates (for paste at cursor)
     public double MouseCanvasX { get; set; }
     public double MouseCanvasY { get; set; }
-
-    // Edit mode properties
-    [ObservableProperty]
-    private bool _isEditMode;
-
-    [ObservableProperty]
-    private string _selectedTool = "Select";
-
-    [ObservableProperty]
-    private string _selectedConnectionTool = "";
-
-    [ObservableProperty]
-    private Equipment? _connectionSource;
-
-    [ObservableProperty]
-    private string _connectionHint = "";
-
-    [ObservableProperty]
-    private bool _snapToGrid = true;
-
-    [ObservableProperty]
-    private int _gridSize = 20;
-
-    // Viewport dimensions (set by the View)
-    [ObservableProperty]
-    private double _viewportWidth = 800;
-
-    [ObservableProperty]
-    private double _viewportHeight = 600;
-
-    private string _pendingSourceAnchor = "Center";
-    private string _pendingTargetAnchor = "Center";
-
-    public int[] GridSizeOptions { get; } = { 10, 20, 30, 40, 50 };
 
     public AnchorPoint[] AnchorPointOptions { get; } = Enum.GetValues<AnchorPoint>();
 
@@ -270,14 +226,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    partial void OnGridSizeChanging(int value)
-    {
-        // Prevent division by zero - enforce minimum grid size of 1
-        if (value < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(GridSize), "Grid size must be at least 1");
-        }
-    }
 
     private void ApplyFilter()
     {
@@ -294,8 +242,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             return CurrentFilter switch
             {
                 "abnormal" => eq.Status == EquipmentStatus.Abnormal,
-                "valve" => eq.Type == EquipmentType.Valve,
-                "breaker" => eq.Type == EquipmentType.Breaker,
+                "loto" => eq.IsLOTO,
                 _ => true
             };
         });
@@ -586,67 +533,47 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void ZoomIn()
-    {
-        ZoomLevel = Math.Min(ZoomLevel + 0.1, 3.0);
-    }
-
-    [RelayCommand]
-    private void ZoomOut()
-    {
-        ZoomLevel = Math.Max(ZoomLevel - 0.1, 0.25);
-    }
-
-    [RelayCommand]
     private void FitToView()
     {
-        if (EquipmentCollection.Count == 0)
+        if (EquipmentCollection.Count == 0 && Groups.Count == 0)
         {
-            // No equipment, reset to default
-            ZoomLevel = 1.0;
-            PanX = 50;
-            PanY = 50;
+            // No content, reset to default
+            Canvas.ResetViewCommand.Execute(null);
             return;
         }
 
-        // Calculate bounding box of all equipment
-        double minX = EquipmentCollection.Min(e => e.X);
-        double minY = EquipmentCollection.Min(e => e.Y);
-        double maxX = EquipmentCollection.Max(e => e.X + e.Width);
-        double maxY = EquipmentCollection.Max(e => e.Y + e.Height);
+        // Calculate bounding box of all content
+        double minX = double.MaxValue, minY = double.MaxValue;
+        double maxX = double.MinValue, maxY = double.MinValue;
+
+        if (EquipmentCollection.Count > 0)
+        {
+            minX = EquipmentCollection.Min(e => e.X);
+            minY = EquipmentCollection.Min(e => e.Y);
+            maxX = EquipmentCollection.Max(e => e.X + e.Width);
+            maxY = EquipmentCollection.Max(e => e.Y + e.Height);
+        }
 
         // Include groups in bounding box
         if (Groups.Count > 0)
         {
-            minX = Math.Min(minX, Groups.Min(g => g.X));
-            minY = Math.Min(minY, Groups.Min(g => g.Y));
-            maxX = Math.Max(maxX, Groups.Max(g => g.X + g.Width));
-            maxY = Math.Max(maxY, Groups.Max(g => g.Y + g.Height));
+            if (EquipmentCollection.Count == 0)
+            {
+                minX = Groups.Min(g => g.X);
+                minY = Groups.Min(g => g.Y);
+                maxX = Groups.Max(g => g.X + g.Width);
+                maxY = Groups.Max(g => g.Y + g.Height);
+            }
+            else
+            {
+                minX = Math.Min(minX, Groups.Min(g => g.X));
+                minY = Math.Min(minY, Groups.Min(g => g.Y));
+                maxX = Math.Max(maxX, Groups.Max(g => g.X + g.Width));
+                maxY = Math.Max(maxY, Groups.Max(g => g.Y + g.Height));
+            }
         }
 
-        double contentWidth = maxX - minX;
-        double contentHeight = maxY - minY;
-
-        // Add padding (10% on each side)
-        double padding = 0.1;
-        double paddedWidth = contentWidth * (1 + padding * 2);
-        double paddedHeight = contentHeight * (1 + padding * 2);
-
-        // Calculate zoom to fit
-        double zoomX = ViewportWidth / paddedWidth;
-        double zoomY = ViewportHeight / paddedHeight;
-        double newZoom = Math.Min(zoomX, zoomY);
-
-        // Clamp zoom to reasonable bounds
-        newZoom = Math.Clamp(newZoom, 0.25, 2.0);
-
-        // Calculate pan to center the content
-        double centerX = (minX + maxX) / 2;
-        double centerY = (minY + maxY) / 2;
-
-        ZoomLevel = newZoom;
-        PanX = (ViewportWidth / 2) - (centerX * newZoom);
-        PanY = (ViewportHeight / 2) - (centerY * newZoom);
+        Canvas.FitToContent(minX, minY, maxX, maxY);
     }
 
     [RelayCommand]
@@ -690,44 +617,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    // Edit Mode Commands
-    [RelayCommand]
-    private void ToggleEditMode()
-    {
-        IsEditMode = !IsEditMode;
-        if (!IsEditMode)
-        {
-            SelectedTool = "Select";
-            SelectedConnectionTool = "";
-            CancelConnection();
-        }
-    }
-
-    [RelayCommand]
-    private void SelectTool(string tool)
-    {
-        if (SelectedTool == tool) return; // Already selected
-        
-        SelectedTool = tool;
-        if (!string.IsNullOrEmpty(SelectedConnectionTool))
-        {
-            SelectedConnectionTool = "";
-            CancelConnection();
-        }
-    }
-
-    [RelayCommand]
-    private void SelectConnectionTool(string tool)
-    {
-        if (SelectedConnectionTool == tool) return; // Already selected
-        
-        SelectedConnectionTool = tool;
-        if (!string.IsNullOrEmpty(SelectedTool))
-        {
-            SelectedTool = "";
-        }
-        CancelConnection();
-    }
 
     [RelayCommand]
     private void Undo()
@@ -825,10 +714,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
         };
 
         // Snap the click point (which becomes the center) to grid
-        if (SnapToGrid)
+        if (Canvas.SnapToGrid)
         {
-            x = Math.Round(x / GridSize) * GridSize;
-            y = Math.Round(y / GridSize) * GridSize;
+            x = Math.Round(x / Canvas.GridSize) * Canvas.GridSize;
+            y = Math.Round(y / Canvas.GridSize) * Canvas.GridSize;
         }
 
         // Click point is center, calculate top-left position
@@ -868,10 +757,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void AddLabelAtPosition(double x, double y)
     {
         // Snap to grid if enabled
-        if (SnapToGrid)
+        if (Canvas.SnapToGrid)
         {
-            x = Math.Round(x / GridSize) * GridSize;
-            y = Math.Round(y / GridSize) * GridSize;
+            x = Math.Round(x / Canvas.GridSize) * Canvas.GridSize;
+            y = Math.Round(y / Canvas.GridSize) * Canvas.GridSize;
         }
 
         var label = new CanvasLabel
@@ -937,12 +826,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public void MoveEquipment(Equipment equipment, double newX, double newY, bool saveAfter = true)
     {
-        if (SnapToGrid)
+        if (Canvas.SnapToGrid)
         {
             // Snap the GridAnchor point to grid, not the top-left corner
             var (anchorOffsetX, anchorOffsetY) = equipment.GetAnchorOffset(equipment.GridAnchor);
-            double anchorX = Math.Round((newX + anchorOffsetX) / GridSize) * GridSize;
-            double anchorY = Math.Round((newY + anchorOffsetY) / GridSize) * GridSize;
+            double anchorX = Math.Round((newX + anchorOffsetX) / Canvas.GridSize) * Canvas.GridSize;
+            double anchorY = Math.Round((newY + anchorOffsetY) / Canvas.GridSize) * Canvas.GridSize;
             newX = anchorX - anchorOffsetX;
             newY = anchorY - anchorOffsetY;
         }
@@ -1225,27 +1114,27 @@ public partial class MainViewModel : ObservableObject, IDisposable
     // Connection methods
     public void SetPendingSourceAnchor(string anchor)
     {
-        _pendingSourceAnchor = anchor;
+        Tool.SetPendingSourceAnchor(anchor);
     }
 
     public void SetPendingTargetAnchor(string anchor)
     {
-        _pendingTargetAnchor = anchor;
+        Tool.SetPendingTargetAnchor(anchor);
     }
 
     public bool TryHandleConnectionClick(Equipment equipment)
     {
-        if (string.IsNullOrEmpty(SelectedConnectionTool)) return false;
+        if (string.IsNullOrEmpty(Tool.SelectedConnectionTool)) return false;
 
-        if (ConnectionSource == null)
+        if (Tool.ConnectionSource == null)
         {
-            ConnectionSource = equipment;
-            ConnectionHint = $"Select target for {SelectedConnectionTool} connection from {equipment.Name}";
+            Tool.ConnectionSource = equipment;
+            Tool.ConnectionHint = $"Select target for {Tool.SelectedConnectionTool} connection from {equipment.Name}";
             return true;
         }
-        else if (ConnectionSource != equipment)
+        else if (Tool.ConnectionSource != equipment)
         {
-            CreateConnection(ConnectionSource, equipment);
+            CreateConnection(Tool.ConnectionSource, equipment);
             CancelConnection();
             return true;
         }
@@ -1255,7 +1144,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private void CreateConnection(Equipment source, Equipment target)
     {
-        var type = SelectedConnectionTool == "Electrical" ? ConnectionType.Electrical : ConnectionType.Pipe;
+        var type = Tool.SelectedConnectionTool == "Electrical" ? ConnectionType.Electrical : ConnectionType.Pipe;
         
         var connection = new Connection
         {
@@ -1263,8 +1152,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
             SourceEquipmentId = source.Id,
             TargetEquipmentId = target.Id,
             Type = type,
-            SourceAnchor = _pendingSourceAnchor,
-            TargetAnchor = _pendingTargetAnchor,
+            SourceAnchor = Tool.PendingSourceAnchor,
+            TargetAnchor = Tool.PendingTargetAnchor,
             LayerId = ActiveLayer?.Id ?? "default"
         };
 
@@ -1284,10 +1173,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public void CancelConnection()
     {
-        ConnectionSource = null;
-        ConnectionHint = "";
-        _pendingSourceAnchor = "Center";
-        _pendingTargetAnchor = "Center";
+        Tool.CancelConnection();
     }
 
     public void DeleteSelectedConnection()
@@ -1549,11 +1435,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (newWidth < 30) newWidth = 30;
         if (newHeight < 30) newHeight = 30;
 
-        if (SnapToGrid)
+        if (Canvas.SnapToGrid)
         {
             // Snap dimensions to grid
-            newWidth = Math.Round(newWidth / GridSize) * GridSize;
-            newHeight = Math.Round(newHeight / GridSize) * GridSize;
+            newWidth = Math.Round(newWidth / Canvas.GridSize) * Canvas.GridSize;
+            newHeight = Math.Round(newHeight / Canvas.GridSize) * Canvas.GridSize;
             if (newWidth < 30) newWidth = 30;
             if (newHeight < 30) newHeight = 30;
 
@@ -1572,8 +1458,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
             };
 
             // Snap the GridAnchor point to grid
-            double anchorX = Math.Round((newX + anchorOffsetX) / GridSize) * GridSize;
-            double anchorY = Math.Round((newY + anchorOffsetY) / GridSize) * GridSize;
+            double anchorX = Math.Round((newX + anchorOffsetX) / Canvas.GridSize) * Canvas.GridSize;
+            double anchorY = Math.Round((newY + anchorOffsetY) / Canvas.GridSize) * Canvas.GridSize;
             newX = anchorX - anchorOffsetX;
             newY = anchorY - anchorOffsetY;
         }
