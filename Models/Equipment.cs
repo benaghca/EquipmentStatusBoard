@@ -211,14 +211,18 @@ public partial class Equipment : ObservableObject
     }
 
     /// <summary>
-    /// Returns true if this equipment is a power source (generator)
+    /// Returns true if this equipment is a power source (generator or transformer)
     /// </summary>
     public bool IsPowerSource()
     {
         if (string.IsNullOrEmpty(CurrentPosition)) return false;
 
-        return Type == EquipmentType.Generator &&
-               CurrentPosition.Equals("on", StringComparison.OrdinalIgnoreCase);
+        return Type switch
+        {
+            EquipmentType.Generator => CurrentPosition.Equals("on", StringComparison.OrdinalIgnoreCase),
+            EquipmentType.Transformer => CurrentPosition.Equals("energized", StringComparison.OrdinalIgnoreCase),
+            _ => false
+        };
     }
 
     public static EquipmentType ParseType(string typeString)

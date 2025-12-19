@@ -81,11 +81,14 @@ public partial class MainWindow : Window
         this.PreviewMouseMove += Window_PreviewMouseMove;
         this.PreviewMouseLeftButtonUp += Window_PreviewMouseLeftButtonUp;
 
-        // Set initial viewport size after layout
+        // Set initial viewport size after layout and recalculate electrical status
         Loaded += (s, e) =>
         {
             ViewModel.Canvas.ViewportWidth = DiagramCanvas.ActualWidth;
             ViewModel.Canvas.ViewportHeight = DiagramCanvas.ActualHeight;
+
+            // Recalculate electrical status after bindings are established
+            ViewModel.RecalculateElectricalStatus();
         };
     }
 }

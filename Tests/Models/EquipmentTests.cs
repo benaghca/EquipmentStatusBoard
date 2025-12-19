@@ -57,16 +57,20 @@ public class EquipmentTests
     }
 
     [Theory]
-    [InlineData(EquipmentType.Generator, true)]
-    [InlineData(EquipmentType.Valve, false)]
-    [InlineData(EquipmentType.Pump, false)]
-    [InlineData(EquipmentType.UPS, false)] // UPS is not a power source in current implementation
-    public void IsPowerSource_ShouldIdentifyPowerSources(EquipmentType type, bool expected)
+    [InlineData(EquipmentType.Generator, "on", true)]
+    [InlineData(EquipmentType.Generator, "off", false)]
+    [InlineData(EquipmentType.Generator, "standby", false)]
+    [InlineData(EquipmentType.Transformer, "energized", true)]
+    [InlineData(EquipmentType.Transformer, "de-energized", false)]
+    [InlineData(EquipmentType.Valve, "on", false)]
+    [InlineData(EquipmentType.Pump, "on", false)]
+    [InlineData(EquipmentType.UPS, "on", false)] // UPS conducts but is not a power source
+    public void IsPowerSource_ShouldIdentifyPowerSources(EquipmentType type, string position, bool expected)
     {
         var equipment = new Equipment
         {
             Type = type,
-            CurrentPosition = "on"
+            CurrentPosition = position
         };
 
         Assert.Equal(expected, equipment.IsPowerSource());

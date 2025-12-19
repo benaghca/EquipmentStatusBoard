@@ -85,6 +85,7 @@ public class ProjectService : IProjectService
             ("chw-p-001", "CHW-P-001", EquipmentType.Pump, "on", 200, 320, 60, 60),
             ("chw-p-002", "CHW-P-002", EquipmentType.Pump, "off", 400, 320, 60, 60),
             ("ch-001", "CHILLER-001", EquipmentType.Chiller, "on", 280, 80, 100, 70),
+            ("xfmr-001", "XFMR-001", EquipmentType.Transformer, "energized", 500, 80, 80, 60),
             ("msb-001", "MSB-001", EquipmentType.Breaker, "closed", 620, 80, 70, 50),
             ("msb-002", "MSB-002", EquipmentType.Breaker, "closed", 620, 160, 70, 50),
             ("msb-003", "MSB-003", EquipmentType.Breaker, "open", 620, 240, 70, 50),
@@ -115,7 +116,30 @@ public class ProjectService : IProjectService
         {
             eq.CurrentPosition = GetOppositePosition(eq.NormalPosition);
         }
-        
+
+        // Add electrical connections to demonstrate power flow
+        // Power flows: XFMR -> MSB-001 -> MSB-002 -> ATS (normal) -> UPS
+        // Generator -> ATS (emergency)
+        var demoConnections = new (string id, string source, string target)[]
+        {
+            ("conn-1", "xfmr-001", "msb-001"),
+            ("conn-2", "msb-001", "msb-002"),
+            ("conn-3", "msb-002", "ats-001"),
+            ("conn-4", "gen-001", "ats-001"),
+            ("conn-5", "ats-001", "ups-001"),
+        };
+
+        foreach (var (id, source, target) in demoConnections)
+        {
+            project.Connections.Add(new Connection
+            {
+                Id = id,
+                SourceEquipmentId = source,
+                TargetEquipmentId = target,
+                Type = ConnectionType.Electrical
+            });
+        }
+
         return project;
     }
     
